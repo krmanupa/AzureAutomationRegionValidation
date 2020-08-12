@@ -11,9 +11,10 @@ Param(
     [string] $workerGroupName = "Test-Auto-Created-Worker"   
 )
 
+
 #Create path for the MMA agent download
 $directoryPathForMMADownload="C:\temp"
-if(!(Test-Path -path $directoryPathForLog))  
+if(!(Test-Path -path $directoryPathForMMADownload))  
 {  
      New-Item -ItemType directory -Path $directoryPathForMMADownload
      Write-Host "Folder path has been created successfully at: " $directoryPathForMMADownload    
@@ -25,13 +26,13 @@ else
 
 $outputPath = $directoryPathForMMADownload + "\MMA.exe"
 # need to update the MMA Agent exe link
-Invoke-WebRequest "https://go.microsoft.com/fwlink/?LinkId=828603" -Out $outputPath
+#Invoke-WebRequest "https://go.microsoft.com/fwlink/?LinkId=828603" -Out $outputPath
 
 $changeDirectoryToMMALocation = "cd  $directoryPathForMMADownload"
 iex $changeDirectoryToMMALocation
 
 $commandToInstallMMAAgent = ".\MMA.exe /c /t:c:\windows\temp\oms"
-iex $commandToInstallMMAAgent
+#iex $commandToInstallMMAAgent
 
 Start-Sleep -s 60
 
@@ -44,6 +45,7 @@ if($Environment -eq "AzureUSGovernment"){
 }
 
 $commandToConnectoToLAWorkspace = '.\setup.exe /qn NOAPM=1 ADD_OPINSIGHTS_WORKSPACE=1 OPINSIGHTS_WORKSPACE_AZURE_CLOUD_TYPE=' + $cloudType + ' OPINSIGHTS_WORKSPACE_ID="'+ $workspaceId +'" OPINSIGHTS_WORKSPACE_KEY="'+ $workspaceKey+'" AcceptEndUserLicenseAgreement=1'
+Write-Output $commandToConnectoToLAWorkspace
 iex $commandToConnectoToLAWorkspace
 
 Start-Sleep -Seconds 600
