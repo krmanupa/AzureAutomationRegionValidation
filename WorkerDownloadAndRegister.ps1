@@ -1,6 +1,4 @@
-﻿Param(
-    [Parameter(Mandatory = $true)]
-    [string] $Environment = "AzureCloud" , # "AzureCloud", "AzureUSGovernment", "AzureChinaCloud"
+Param(
     [Parameter(Mandatory = $true)]
     [string] $workspaceId ,
     [Parameter(Mandatory = $true)]
@@ -12,29 +10,6 @@
     [Parameter(Mandatory = $false)]
     [string] $workerGroupName = "Test-Auto-Created-Worker"   
 )
-
-
-$User = "TestDscVMUser"
-$Password = ConvertTo-SecureString "SecurePassword12345" -AsPlainText -Force
-$VMCredential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $User, $Password
-New-AzVm `
-    -ResourceGroupName "krmanupa-int" `
-    -Name "TestVM123" `
-    -Location "West Europe" `
-    -VirtualNetworkName "TestDscVnet123" `
-    -SubnetName "TestDscSubnet123" `
-    -SecurityGroupName "TestDscNetworkSecurityGroup123" `
-    -PublicIpAddressName "TestDscPublicIpAddress123" `
-    -Credential $VMCredential
-
-# To install and register hybrid worker on the new VM
-
-$workspaceId = "8f3681a5-f0f2-4af7-96a6-f5cd159c88bc"
-$workspaceKey = "xYIVe5fDyi4Eu9PGEggcORXeW2K9XJ2LkaWTldIayKMUEN6fs6JTl1aNlWub9Tqk78KLPHLJe7b5erMckjHUdA=="
-$workerFolder = "C:\Program Files\Microsoft Monitoring Agent\Agent\AzureAutomation\7.3.837.0\HybridRegistration"
-$agentServiceEndpoint = "https://edbaa296-824a-4683-95c7-026f4cbfae97.agentsvc.jpe.azure-automation.net/accounts/edbaa296-824a-4683-95c7-026f4cbfae97"
-$aaToken = "nd98PpX/rkW4JnScDPzJdxI8CzTiArDGcRklM9rn3PqPCEXShUbnot+Fg/YfzKOz6MDPo1KvADQSukVymP56NQ=="
-
 
 #Create path for the MMA agent download
 $directoryPathForMMADownload="C:\temp"
@@ -52,7 +27,7 @@ $outputPath = $directoryPathForMMADownload + "\MMA.exe"
 # need to update the MMA Agent exe link
 Invoke-WebRequest "https://go.microsoft.com/fwlink/?LinkId=828603" -Out $outputPath
 
-$changeDirectoryToMMALocation = 'cd ' + $directoryPathForMMADownload + ' '
+$changeDirectoryToMMALocation = "cd  $directoryPathForMMADownload"
 iex $changeDirectoryToMMALocation
 
 $commandToInstallMMAAgent = ".\MMA.exe /c /t:c:\windows\temp\oms"
@@ -71,10 +46,34 @@ if($Environment -eq "AzureUSGovernment"){
 $commandToConnectoToLAWorkspace = '.\setup.exe /qn NOAPM=1 ADD_OPINSIGHTS_WORKSPACE=1 OPINSIGHTS_WORKSPACE_AZURE_CLOUD_TYPE=' + $cloudType + ' OPINSIGHTS_WORKSPACE_ID="'+ $workspaceId +'" OPINSIGHTS_WORKSPACE_KEY="'+ $workspaceKey+'" AcceptEndUserLicenseAgreement=1'
 iex $commandToConnectoToLAWorkspace
 
-Start-Sleep -Seconds 60*10
+Start-Sleep -Seconds 600
 
-$azureAutomationDirectory = "cd '+ $workerFolder +'"
-iex $azureAutomationDirectory
+# wait until the MMA Agent downloads AzureAutomation on to the machine
+$workerFolder = "C:\\Program Files\\Microsoft Monitoring Agent\\Agent\\AzureAutomation\\7.3.837.0\\HybridRegistration"
+$i = 0
+$azureAutomationPresent = $false
+while($i -le 5)
+{
+    $i++
+    if(!(Test-Path -path $workerFolder))  
+    {  
+        Start-Sleep -s 300
+        Write-Host "Folder path is not present waiting..:  $workerFolder"    
+    }
+    else 
+    { 
+        $azureAutomationPresent = $true
+        Write-Host "The given folder path $workerFolder already exists"
+        break
+    }
+    Write-Verbose 'Timedout waiting for Automation folder.'
+}
 
-Import-Module .\HybridRegistration.psd1
-Add-HybridRunbookWorker -GroupName test-autocreate -EndPoint $agentServiceEndpoint -Token $aaToken
+if($azureAutomationPresent){
+    
+    $azureAutomationDirectory = "cd $workerFolder"
+    iex $azureAutomationDirectory
+
+    Import-Module .\HybridRegistration.psd1
+    Add-HybridRunbookWorker -GroupName $workerGroupName -EndPoint $agentServiceEndpoint -Token $aaToken
+}
