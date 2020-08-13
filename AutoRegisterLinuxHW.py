@@ -4,24 +4,30 @@ from datetime import time
 from optparse import OptionParser
 
 def run_command(cmd):
-    proc = subprocess.Popen([cmd], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = proc.communicate()
     return proc.returncode, stdout, stderr
 
 def download_omsagent(options):
     workspaceId = options.workspace_id
     workspaceKey = options.workspace_key
-
-    cmdToDownloadOmsAgent = "wget https://raw.githubusercontent.com/Microsoft/OMS-Agent-for-Linux/master/installer/scripts/onboard_agent.sh && sh onboard_agent.sh -w "+  str(workspaceId) +" -s "+ str(workspaceKey) +" -d opinsights.azure.com"
-
+    
+    cmdToDownloadOmsAgent = ["wget", "https://raw.githubusercontent.com/Microsoft/OMS-Agent-for-Linux/master/installer/scripts/onboard_agent.sh"] 
+    cmdToInstallOmsAgent = ["sh", "onboard_agent.sh", "-w", workspaceId, "-s", workspaceKey, "-d", "opinsights.azure.com"]
+    
     returncode, _, _ = run_command(cmdToDownloadOmsAgent)
+    
+    if(returncode == 0):
+        returncode, _, _ = run_command(cmdToInstallOmsAgent)
 
-    if(returncode != 0):
-        return False
+        if(returncode != 0):
+            return False
+        else:
+            cmdToInvokePerformedRequiredConfigChecks = ["sudo", "su", "omsagent", "-c", "python /opt/microsoft/omsconfig/Scripts/PerformRequiredConfigurationChecks.py"]
+            run_command(cmdToInvokePerformedRequiredConfigChecks)
+            return True
     else:
-        cmdToInvokePerformedRequiredConfigChecks = "sudo su omsagent -c 'python /opt/microsoft/omsconfig/Scripts/PerformRequiredConfigurationChecks.py'"
-        run_command(cmdToInvokePerformedRequiredConfigChecks)
-        return True
+        return False
 
 def register_woker(options):
 
@@ -45,11 +51,11 @@ def register_woker(options):
         tries += 1
 
     if(worker_present):
-        cmdToRegisterUserHW = "sudo python /opt/microsoft/omsconfig/modules/nxOMSAutomationWorker/DSCResources/MSFT_nxOMSAutomationWorkerResource/automationworker/scripts/onboarding.py --register -w "+str(workspaceId)+" -k "+str(automationSharedKey)+" -g "+str(hybridGroupName)+" -e " +str(automationEndpoint)
+        cmdToRegisterUserHW = ["sudo python /opt/microsoft/omsconfig/modules/nxOMSAutomationWorker/DSCResources/MSFT_nxOMSAutomationWorkerResource/automationworker/scripts/onboarding.py --register -w "+str(workspaceId)+" -k "+str(automationSharedKey)+" -g "+str(hybridGroupName)+" -e " +str(automationEndpoint)]
 
         run_command(cmdToRegisterUserHW)
 
-        cmdToTurnOffSignValidation = "sudo python /opt/microsoft/omsconfig/modules/nxOMSAutomationWorker/DSCResources/MSFT_nxOMSAutomationWorkerResource/automationworker/scripts/require_runbook_signature.py --false "+ str(workspaceId)
+        cmdToTurnOffSignValidation = ["sudo python /opt/microsoft/omsconfig/modules/nxOMSAutomationWorker/DSCResources/MSFT_nxOMSAutomationWorkerResource/automationworker/scripts/require_runbook_signature.py --false "+ str(workspaceId)]
 
         returncode, _, stderr = run_command(cmdToTurnOffSignValidation)
         if(returncode != 0):
@@ -68,7 +74,7 @@ def main():
     parser.add_option("-k", "--key", dest="automation_account_key", help="Automation account primary/secondary key.")
     parser.add_option("-g", "--groupname", dest="hybrid_worker_group_name", help="Hybrid worker group name.")
     parser.add_option("-w", "--workspaceid", dest="workspace_id", help="Workspace id.")
-    parser.add_option("-wk", "--workspacekey", dest="workspace_key", help="Workspace Key.")
+    parser.add_option("-l", "--workspacekey", dest="workspace_key", help="Workspace Key.")
 
     (options, _) = parser.parse_args()
     if(download_omsagent(options)):
