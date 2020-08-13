@@ -1,6 +1,7 @@
 import subprocess
 import os
-from datetime import time
+from datetime import datetime
+import time
 from optparse import OptionParser
 
 def run_command(cmd):
