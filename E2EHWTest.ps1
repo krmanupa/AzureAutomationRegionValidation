@@ -1,17 +1,25 @@
-workflow Test-hybrid-pswf
+workflow E2EHWTest
 {
 ### All variables needed
 Param(
-[Parameter(Mandatory = $true)]
-[string] $location ,  
-[Parameter(Mandatory = $true)]
-[string] $Environment , 
 [Parameter(Mandatory = $false)]
-[string] $ResourceGroupName = "krmanupa-test-auto-aa",
+[string] $location = "West Europe",  
+[Parameter(Mandatory = $false)]
+[string] $Environment = "AzureCloud", 
+[Parameter(Mandatory = $false)]
+[string] $ResourceGroupName = "krmanupa-test-auto",
 [Parameter(Mandatory = $false)]
 [string] $AccountName = "Test-Account",
 [Parameter(Mandatory = $false)]
-[string] $WorkspaceName = "Test-LAWorkspace"
+[string] $WorkspaceName = "Test-LAWorkspace",
+[Parameter(Mandatory = $false)]
+[string] $RunbookPSName = "ps-job-test",
+[Parameter(Mandatory = $false)]
+[string] $RunbookPSWFName = "psWF-job-test",
+[Parameter(Mandatory = $false)]
+[string] $RunbookPython2Name = "py2-job-test",
+[Parameter(Mandatory=$false)]
+[string]$AssetVerificationRunbookPSName = "AssetVerificationRunbook"
 )
 
 # Connect using RunAs account connection
@@ -43,20 +51,23 @@ $workspaceId = ""
 $workspacePrimaryKey = ""
 $agentEndpoint = ""
 $aaPrimaryKey = ""
+$guid = ""
+$workerGroupName = ""
 
 parallel {
 
     sequence {
         ### Create an automation account
         Write-Output "Creating Automation Account....."
-        $guid = [guid]::NewGuid()
-        $AccountName = $AccountName + $guid.ToString()
+        $guid_val = [guid]::NewGuid()
+        $WORKFLOW:guid = $guid_val.ToString()
+        #$AccountName = $AccountName + $guid.ToString()
         
         # Write-Verbose "Create account" -verbose
         try {
-            $Account = New-AzAutomationAccount -Name $AccountName -Location $location -ResourceGroupName $ResourceGroupName -Plan "Free"
+            $Account = Get-AzAutomationAccount -Name $AccountName -ResourceGroupName $ResourceGroupName 
             if($Account.AutomationAccountName -like $AccountName) {
-                Write-Output "Account created successfully"
+                Write-Output "Account retrieved successfully"
                 $accRegInfo = Get-AzAutomationRegistrationInfo -ResourceGroup $ResourceGroupName -AutomationAccountName  $AccountName
                 $WORKFLOW:agentEndpoint = $accRegInfo.Endpoint
                 $WORKFLOW:aaPrimaryKey = $accRegInfo.PrimaryKey
@@ -64,11 +75,11 @@ parallel {
                 Write-Output "AgentService endpoint: $agentEndpoint  Primary key : $aaPrimaryKey"
             } 
             else{
-                Write-Error "Account creation failed"
+                Write-Error "Account retrieval failed"
             }
         }
         catch {
-            Write-Error "Account creation failed"
+            Write-Error "Account retrieval failed"
             Write-Error -Message $_.Exception
             throw $_.Exception
         }
@@ -134,7 +145,7 @@ parallel {
 sequence {
         
     ## Run AZ VM Extension to download and Install MMA Agent
-    $workerGroupName = 'test-auto-create'
+    $WORKFLOW:workerGroupName = 'test-auto-create'
     $commandToExecute = "powershell .\WorkerDownloadAndRegister.ps1 -workspaceId $WORKFLOW:workspaceId -workspaceKey $WORKFLOW:workspacePrimaryKey -workerGroupName $workerGroupName -agentServiceEndpoint $WORKFLOW:agentEndpoint -aaToken $WORKFLOW:aaPrimaryKey"
 
     $settings = @{"fileUris" =  @("https://raw.githubusercontent.com/krmanupa/AutoRegisterHW/master/WorkerDownloadAndRegister.ps1"); "commandToExecute" = $commandToExecute};
@@ -285,20 +296,21 @@ parallel {
         }
     
         # DateTime variable
-        sequence {
-            [DateTime] $DateTimeVariableValue = [DateTime]::UtcNow | get-date -Format "yyyy-MM-ddTHH:mm:ssZ"
-            $TestDateTimeVariable = New-AzAutomationVariable -Name $DateTimeVariableName -Value $DateTimeVariableValue -Encrypted $False -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
-            if($TestDateTimeVariable.Value -eq $DateTimeVariableValue) {
-                Write-Output "DateTime variable creation successful"
-            } 
-            else{
-                Write-Error "DateTime variable creation failed"
-            }
-        }
+        #TODO: Fix this
+        # sequence {
+        #     [DateTime] $DateTimeVariableValue = ("Thursday, August 13, 2020 10:14:25 AM") | get-date -Format "yyyy-MM-ddTHH:mm:ssZ"
+        #     $TestDateTimeVariable = New-AzAutomationVariable -Name $DateTimeVariableName -Value $DateTimeVariableValue -Encrypted $False -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
+        #     if($TestDateTimeVariable.Value -eq $DateTimeVariableValue) {
+        #         Write-Output "DateTime variable creation successful"
+        #     } 
+        #     else{
+        #         Write-Error "DateTime variable creation failed"
+        #     }
+        # }
     
         # Unspecified variable
         sequence{
-            $UnspecifiedVariableValue = Get-AzAutomationAccount -Name $AccountName -ResourceGroupName $ResourceGroupName 
+            $UnspecifiedVariableValue = "Some Unspecified Value"
             $TestUnspecifiedVariable = New-AzAutomationVariable -Name $UnspecifiedVariableName -Value $UnspecifiedVariableValue -Encrypted $False -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName    
             if($TestUnspecifiedVariable.Value.AutomationAccountName -like $UnspecifiedVariableValue.AutomationAccountName) {
                 Write-Output "Unspecified variable creation successful"
@@ -321,54 +333,57 @@ parallel {
         }
 
     ############ Certificate ##################
-    sequence{
+#     sequence{
      
-        Write-Verbose "Get auth token" -verbose
-    $currentAzureContext = Get-AzContext
-    $azureRmProfile = [Microsoft.Azure.Commands.Common.Authentication.Abstractions.AzureRmProfileProvider]::Instance.Profile
-    $profileClient = New-Object Microsoft.Azure.Commands.ResourceManager.Common.RMProfileClient($azureRmProfile)
-    $Token = $profileClient.AcquireAccessToken($currentAzureContext.Tenant.TenantId)
+#         Write-Verbose "Get auth token" -verbose
+#     $currentAzureContext = Get-AzContext
+#     $azureRmProfile = [Microsoft.Azure.Commands.Common.Authentication.Abstractions.AzureRmProfileProvider]::Instance.Profile
+#     $profileClient = New-Object Microsoft.Azure.Commands.ResourceManager.Common.RMProfileClient($azureRmProfile)
+#     $Token = $profileClient.AcquireAccessToken($currentAzureContext.Tenant.TenantId)
 
-    Write-Verbose "Create certificate" -verbose
-    try{
-        $Headers = @{}
-        $Headers.Add("Authorization","bearer "+ " " + "$($Token.AccessToken)")
-        $contentType3 = "application/json"
-        $bodyCert = @"
-                {
-  "name": "testCert",
-  "properties": {
-    "base64Value": "MIIC5DCCAcygAwIBAgIQRHw/PpDU95xN9GYFa5vUHTANBgkqhkiG9w0BAQ0FADAuMSwwKgYDVQQDEyNHZW5ldmEgVGVzdCBTdXNiY3JpcHRpb24gTWFuYWdlbWVudDAeFw0xNTEwMDkxODA3MDNaFw0xNzEwMDgxODA3MDNaMC4xLDAqBgNVBAMTI0dlbmV2YSBUZXN0IFN1c2JjcmlwdGlvbiBNYW5hZ2VtZW50MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAjV+X9b/qeFNffLUL/TayLAA5GYoNsvLsVvBebezrdiwi/KeSD3uS0rw8X0QrMn6LWH/RxKs1S8A7UxMZjR6pse5FAZv9A3SHT2dmW5CYDQ7vKyqTB/BeOZch02GMqAkyr3KV7zl0Uj6RYq4Avx0PA2AAg73RXf7s0UtB7e7GnzgKR83/Gj/EaXas21x78IF8sDBVqT3LvvPNSTOlB2/jlwQ9pOijvVpPmvTeChfRmaU8o+oIUJJGLhFDQJkKNw7ZkwkNmY0hijovi63J+hO6ikA9cKvQh4sOiNwKWEIhzxnNmI7O2uDidV4knpV7JbuejrKJemy4rTb0VLuEPpIq0QIDAQABMA0GCSqGSIb3DQEBDQUAA4IBAQAx8ai4hl5GuwPYQMC2V+jzgyROjasvygm+bpo5pWwIr47hbHkN6r5N6Dmp1Vf8xo7uQudzUAS3YVdMakSRQNOzo9mFTKqYLmSA2NI9l2J+TlJnAIbJhqVHCRoQ0Fn2kC5mBb4unQbIVTurb75EGQTHf55LDk3GPrZwpNVsw6nHM+Gy5GL6Vz1J30ZoAaAnNzOfyrJ4J352pCx9FgH3TzD3fhvZODjDrQfankb/yHCBlYx3WyiR+3n8K01qg4L3V9Z+PeFS4pDMN+2zfuOqNCefKKKn1wMyHbXDq1/29OrqJQvueStZ8l3X39umKrhnDwriGIwlgPevuSp23alpF9BY"
-  }
+#     Write-Verbose "Create certificate" -verbose
+#     try{
+#         $Headers = @{}
+#         $Headers.Add("Authorization","bearer "+ " " + "$($Token.AccessToken)")
+#         $contentType3 = "application/json"
+#         $bodyCert = @"
+#                 {
+#   "name": "testCert",
+#   "properties": {
+#     "base64Value": "MIIC5DCCAcygAwIBAgIQRHw/PpDU95xN9GYFa5vUHTANBgkqhkiG9w0BAQ0FADAuMSwwKgYDVQQDEyNHZW5ldmEgVGVzdCBTdXNiY3JpcHRpb24gTWFuYWdlbWVudDAeFw0xNTEwMDkxODA3MDNaFw0xNzEwMDgxODA3MDNaMC4xLDAqBgNVBAMTI0dlbmV2YSBUZXN0IFN1c2JjcmlwdGlvbiBNYW5hZ2VtZW50MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAjV+X9b/qeFNffLUL/TayLAA5GYoNsvLsVvBebezrdiwi/KeSD3uS0rw8X0QrMn6LWH/RxKs1S8A7UxMZjR6pse5FAZv9A3SHT2dmW5CYDQ7vKyqTB/BeOZch02GMqAkyr3KV7zl0Uj6RYq4Avx0PA2AAg73RXf7s0UtB7e7GnzgKR83/Gj/EaXas21x78IF8sDBVqT3LvvPNSTOlB2/jlwQ9pOijvVpPmvTeChfRmaU8o+oIUJJGLhFDQJkKNw7ZkwkNmY0hijovi63J+hO6ikA9cKvQh4sOiNwKWEIhzxnNmI7O2uDidV4knpV7JbuejrKJemy4rTb0VLuEPpIq0QIDAQABMA0GCSqGSIb3DQEBDQUAA4IBAQAx8ai4hl5GuwPYQMC2V+jzgyROjasvygm+bpo5pWwIr47hbHkN6r5N6Dmp1Vf8xo7uQudzUAS3YVdMakSRQNOzo9mFTKqYLmSA2NI9l2J+TlJnAIbJhqVHCRoQ0Fn2kC5mBb4unQbIVTurb75EGQTHf55LDk3GPrZwpNVsw6nHM+Gy5GL6Vz1J30ZoAaAnNzOfyrJ4J352pCx9FgH3TzD3fhvZODjDrQfankb/yHCBlYx3WyiR+3n8K01qg4L3V9Z+PeFS4pDMN+2zfuOqNCefKKKn1wMyHbXDq1/29OrqJQvueStZ8l3X39umKrhnDwriGIwlgPevuSp23alpF9BY"
+#   }
+# }
+# "@
+#         $PutUri = "$UriStart/resourceGroups/$ResourceGroupName/providers/Microsoft.Automation/automationAccounts/$AccountName/certificates/testCert?api-version=2015-10-31"
+#         Invoke-RestMethod -Uri $PutUri -Method Put -ContentType $contentType3 -Headers $Headers -Body $bodyCert
+#     }
+#     catch{
+#         Write-Error -Message $_.Exception
+#     }
+
+#     $Cert = Get-AzAutomationCertificate -Name "testCert" -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
+#     if($Cert.Thumbprint -like "edfab8580e873bbc2ac188ed6d02411019b7d8d3") {
+#         Write-Output "Certificate asset creation successful"
+#     } 
+#     else{
+#         Write-Error "Certificate asset creation failed"
+#     }
+
+
+#     }
+    }
 }
-"@
-        $PutUri = "$UriStart/resourceGroups/$ResourceGroupName/providers/Microsoft.Automation/automationAccounts/$AccountName/certificates/testCert?api-version=2015-10-31"
-        Invoke-RestMethod -Uri $PutUri -Method Put -ContentType $contentType3 -Headers $Headers -Body $bodyCert
-    }
-    catch{
-        Write-Error -Message $_.Exception
-    }
 
-    $Cert = Get-AzAutomationCertificate -Name "testCert" -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
-    if($Cert.Thumbprint -like "edfab8580e873bbc2ac188ed6d02411019b7d8d3") {
-        Write-Output "Certificate asset creation successful"
-    } 
-    else{
-        Write-Error "Certificate asset creation failed"
-    }
-
-
-    }
-    }
-}
+$assetVerificationRunbookParams = @{"guid" = $guid}
 
 # check cloud and hybrid jobs behavior
-parallel {
-    #cloud jobs verification
+sequence {
+    # cloud jobs verification
     # verify all the get/set of the automation assets
     parallel{
+        Write-Output "Starting cloud jobs..."
         sequence {
-            Write-Output "Start hybrid jobs" 
+            Write-Output "Starting Python Runbook on Cloud..."
             # Python2
             $JobHybridPy2 = Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name $RunbookPython2Name  -ResourceGroupName $ResourceGroupName -MaxWaitSeconds 600 -Wait
             $pythonRbJobId = $JobHybridPy2.JobId
@@ -389,8 +404,9 @@ parallel {
         
         sequence {
             # PowerShell - Test job stream
-            $JobHybridPS = Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name $RunbookPSName  -ResourceGroupName $ResourceGroupName
-            $psRbJobId = $JobHybridPS.JobId
+            Write-Output "Starting PS runbook on Cloud...."
+            $JobCloudPS = Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name $RunbookPSName  -ResourceGroupName $ResourceGroupName
+            $psRbJobId = $JobCloudPS.JobId
             Start-Sleep -Seconds 600
             $JobOutput = Get-AzAutomationJobOutput -Id $psRbJobId -Stream "Output" -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
             if($JobOutput.Summary -like "SampleOutput") {
@@ -406,51 +422,63 @@ parallel {
             }
         }
 
-        sequence {
+        # sequence {
             
-            # PowerShell Workflow - Test job status
-            $JobHybridPSWF = Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name $RunbookPSWFName -ResourceGroupName $ResourceGroupName
-            $pswfRbJobId = $JobHybridPSWF.JobId
-            Start-Sleep -Seconds 400
-            $Job1 = Get-AzAutomationJob -Id $pswfRbJobId -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
-            if($Job1.Status -like "Running") {
-                Write-Output "Hybrid job for PS WF runbook is running"
-            }  
-            elseif($Job1.Status -like "Queued") {
-                Write-Warning "Hybrid job for PS WF runbook didn't start in 5 mins"
-                Start-Sleep -Seconds 100
+        #     # PowerShell Workflow - Test job status
+        #     $JobCloudPSWF = Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name $RunbookPSWFName -ResourceGroupName $ResourceGroupName
+        #     $pswfRbJobId = $JobCloudPSWF.JobId
+        #     Start-Sleep -Seconds 400
+        #     $Job1 = Get-AzAutomationJob -Id $pswfRbJobId -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
+        #     if($Job1.Status -like "Running") {
+        #         Write-Output "Cloud job for PS WF runbook is running"
+        #     }  
+        #     elseif($Job1.Status -like "Queued") {
+        #         Write-Warning "Cloud job for PS WF runbook didn't start in 5 mins"
+        #         Start-Sleep -Seconds 100
+        #     }
+
+        #     Write-Output "Suspending PSWF runbook"
+        #     Suspend-AzAutomationJob  -Id $pswfRbJobId -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
+        #     Start-Sleep -Seconds 30
+        #     $Job2 = Get-AzAutomationJob -Id $pswfRbJobId -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
+        #     if($Job2.Status -like "Suspended") {
+        #         Write-Output "Cloud job for PS WF runbook is suspended"
+        #     } 
+
+        #     Write-Output "Resuming PSWF runbook"
+        #     Resume-AzAutomationJob  -Id $pswfRbJobId -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
+        #     Start-Sleep -Seconds 30
+        #     $Job3 = Get-AzAutomationJob -Id $pswfRbJobId -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
+        #     if($Job3.Status -like "Running") {
+        #         Write-Output "Cloud job for PS WF runbook has resumed running"
+        #     } 
+
+        #     Write-Output "Stoppin PSWF runbook"
+        #     Stop-AzAutomationJob  -Id $pswfRbJobId -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
+        #     Start-Sleep -Seconds 30
+        #     $Job4 = Get-AzAutomationJob -Id $pswfRbJobId -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
+        #     if($Job4.Status -like "Stopping" -or $Job4.Status -like "Stopped") {
+        #         Write-Output "Cloud job for PS WF runbook is stopping"
+        #     }      
+        # }
+
+        #Assets verification runbooks
+        sequence{
+            sequence{
+                # $JobHybridPy2 = Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name $RunbookPython2Name  -ResourceGroupName $ResourceGroupName -MaxWaitSeconds 600 -Wait
+                
             }
-
-            Write-Output "Suspending PSWF runbook"
-            Suspend-AzAutomationJob  -Id $pswfRbJobId -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
-            Start-Sleep -Seconds 30
-            $Job2 = Get-AzAutomationJob -Id $pswfRbJobId -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
-            if($Job2.Status -like "Suspended") {
-                Write-Output "Hybrid job for PS WF runbook is suspended"
-            } 
-
-            Write-Output "Resuming PSWF runbook"
-            Resume-AzAutomationJob  -Id $pswfRbJobId -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
-            Start-Sleep -Seconds 30
-            $Job3 = Get-AzAutomationJob -Id $pswfRbJobId -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
-            if($Job3.Status -like "Running") {
-                Write-Output "Hybrid job for PS WF runbook has resumed running"
-            } 
-
-            Write-Output "Stoppin PSWF runbook"
-            Stop-AzAutomationJob  -Id $pswfRbJobId -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
-            Start-Sleep -Seconds 30
-            $Job4 = Get-AzAutomationJob -Id $pswfRbJobId -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
-            if($Job4.Status -like "Stopping" -or $Job4.Status -like "Stopped") {
-                Write-Output "Hybrid job for PS WF runbook is stopping"
-            }      
+            sequence {
+                Write-Output "Starting AutomationAssets verification runbook on Cloud...."
+                $JobCloudPS = Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name $AssetVerificationRunbookPSName  -ResourceGroupName $ResourceGroupName -Parameters $assetVerificationRunbookParams
+            }
         }
     }
 
     #Hybrid jobs verification
     # verify all the get/set of the automation assets
     parallel {
-        
+        Write-Output "Starting Hybrid Jobs....."
         # sequence {
         #     Write-Output "Start hybrid jobs" 
         #     # Python2
@@ -472,9 +500,11 @@ parallel {
         # }
         
         sequence {
+            Write-Output "Starting PS runbook on Hybrid on $workerGroupName..."
             # PowerShell - Test job stream
             $JobHybridPS = Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name $RunbookPSName -RunOn $workerGroupName -ResourceGroupName $ResourceGroupName
             $psRbJobId = $JobHybridPS.JobId
+            
             Start-Sleep -Seconds 600
             $JobOutput = Get-AzAutomationJobOutput -Id $psRbJobId -Stream "Output" -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
             if($JobOutput.Summary -like "SampleOutput") {
@@ -490,55 +520,157 @@ parallel {
             }
         }
 
-        sequence {
+        # sequence {
             
-            # PowerShell Workflow - Test job status
-            $JobHybridPSWF = Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name $RunbookPSWFName -RunOn $workerGroupName -ResourceGroupName $ResourceGroupName
-            $pswfRbJobId = $JobHybridPSWF.JobId
-            Start-Sleep -Seconds 400
-            $Job1 = Get-AzAutomationJob -Id $pswfRbJobId -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
-            if($Job1.Status -like "Running") {
-                Write-Output "Hybrid job for PS WF runbook is running"
-            }  
-            elseif($Job1.Status -like "Queued") {
-                Write-Warning "Hybrid job for PS WF runbook didn't start in 5 mins"
-                Start-Sleep -Seconds 100
+        #     # PowerShell Workflow - Test job status
+        #     $JobHybridPSWF = Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name $RunbookPSWFName -RunOn $workerGroupName -ResourceGroupName $ResourceGroupName
+        #     $pswfRbJobId = $JobHybridPSWF.JobId
+        #     Start-Sleep -Seconds 400
+        #     $Job1 = Get-AzAutomationJob -Id $pswfRbJobId -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
+        #     if($Job1.Status -like "Running") {
+        #         Write-Output "Hybrid job for PS WF runbook is running"
+        #     }  
+        #     elseif($Job1.Status -like "Queued") {
+        #         Write-Warning "Hybrid job for PS WF runbook didn't start in 5 mins"
+        #         Start-Sleep -Seconds 100
+        #     }
+
+        #     Write-Output "Suspending PSWF runbook"
+        #     Suspend-AzAutomationJob  -Id $pswfRbJobId -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
+        #     Start-Sleep -Seconds 30
+        #     $Job2 = Get-AzAutomationJob -Id $pswfRbJobId -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
+        #     if($Job2.Status -like "Suspended") {
+        #         Write-Output "Hybrid job for PS WF runbook is suspended"
+        #     } 
+
+        #     Write-Output "Resuming PSWF runbook"
+        #     Resume-AzAutomationJob  -Id $pswfRbJobId -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
+        #     Start-Sleep -Seconds 30
+        #     $Job3 = Get-AzAutomationJob -Id $pswfRbJobId -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
+        #     if($Job3.Status -like "Running") {
+        #         Write-Output "Hybrid job for PS WF runbook has resumed running"
+        #     } 
+
+        #     Write-Output "Stoppin PSWF runbook"
+        #     Stop-AzAutomationJob  -Id $pswfRbJobId -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
+        #     Start-Sleep -Seconds 30
+        #     $Job4 = Get-AzAutomationJob -Id $pswfRbJobId -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
+        #     if($Job4.Status -like "Stopping" -or $Job4.Status -like "Stopped") {
+        #         Write-Output "Hybrid job for PS WF runbook is stopping"
+        #     }      
+        # }
+        #Assets verification runbooks
+        sequence{
+            sequence{
+                # $JobHybridPy2 = Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name $RunbookPython2Name  -ResourceGroupName $ResourceGroupName -MaxWaitSeconds 600 -Wait
+                
             }
-
-            Write-Output "Suspending PSWF runbook"
-            Suspend-AzAutomationJob  -Id $pswfRbJobId -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
-            Start-Sleep -Seconds 30
-            $Job2 = Get-AzAutomationJob -Id $pswfRbJobId -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
-            if($Job2.Status -like "Suspended") {
-                Write-Output "Hybrid job for PS WF runbook is suspended"
-            } 
-
-            Write-Output "Resuming PSWF runbook"
-            Resume-AzAutomationJob  -Id $pswfRbJobId -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
-            Start-Sleep -Seconds 30
-            $Job3 = Get-AzAutomationJob -Id $pswfRbJobId -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
-            if($Job3.Status -like "Running") {
-                Write-Output "Hybrid job for PS WF runbook has resumed running"
-            } 
-
-            Write-Output "Stoppin PSWF runbook"
-            Stop-AzAutomationJob  -Id $pswfRbJobId -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
-            Start-Sleep -Seconds 30
-            $Job4 = Get-AzAutomationJob -Id $pswfRbJobId -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
-            if($Job4.Status -like "Stopping" -or $Job4.Status -like "Stopped") {
-                Write-Output "Hybrid job for PS WF runbook is stopping"
-            }      
+            sequence {
+                
+                Write-Output "Starting Automation assets verification runbook on Hybrid on $workerGroupName..."
+                $JobHybridPS = Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name $AssetVerificationRunbookPSName  -ResourceGroupName $ResourceGroupName -Parameters $assetVerificationRunbookParams -RunOn $workerGroupName
+            }
         }
-
-        }
-    
     }
+}
+
+# run az vm extesion to de register the HW
+sequence {
+        
+    ## Run AZ VM Extension to download and Install MMA Agent
+    $commandToExecute = "powershell .\RemoveHybridworker.ps1 -agentServiceEndpoint $WORKFLOW:agentEndpoint -aaToken $WORKFLOW:aaPrimaryKey"
+
+    $settings = @{"fileUris" =  @("https://raw.githubusercontent.com/krmanupa/AutoRegisterHW/master/RemoveHybridworker.ps1"); "commandToExecute" = $commandToExecute};
+    $protectedSettings = @{"storageAccountName" = ""; "storageAccountKey" = ""};
+
+    # Run Az VM Extension to download and register worker.
+    Write-Output "Running Az VM Extension to De-Register the worker...."
+    Write-Output "Command executing ... $commandToExecute"
+    try {
+        Set-AzVMExtension -ResourceGroupName $ResourceGroupName `
+        -Location $location `
+            -VMName $vmName `
+            -Name "Remove-HybridWorker" `
+            -Publisher "Microsoft.Compute" `
+            -ExtensionType "CustomScriptExtension" `
+            -TypeHandlerVersion "1.10" `
+            -Settings $settings `
+            -ProtectedSettings $protectedSettings
+
+    }
+    catch {
+        Write-Error "Error running VM extension to De-Register Hybrid Worker"
+        Write-Error -Message $_.Exception
+        throw $_.Exception
+    }
+}
 
 #Delete all the resources
 sequence {
     Remove-AzVm -ResourceGroupName $ResourceGroupName -Name $vmName -Force
     Remove-AzOperationalInsightsWorkspace -ResourceGroupName $ResourceGroupName -Name $WorkspaceName -Force
-    Remove-AzAutomationAccount -Name $AccountName -ResourceGroupName $ResourceGroupName -Force
+    #Remove-AzAutomationAccount -Name $AccountName -ResourceGroupName $ResourceGroupName -Force
 }
 
+function GetAuthToken{
+     # Write-Verbose "Get auth token" -verbose
+     $currentAzureContext = Get-AzContext
+     $azureRmProfile = [Microsoft.Azure.Commands.Common.Authentication.Abstractions.AzureRmProfileProvider]::Instance.Profile
+     $profileClient = New-Object Microsoft.Azure.Commands.ResourceManager.Common.RMProfileClient($azureRmProfile)
+     $Token = $profileClient.AcquireAccessToken($currentAzureContext.Tenant.TenantId)
+ 
+     return $Token
+}
+
+function InvokePatchRestMethod{
+    param (
+        $Uri,
+        $Body,
+        $ContentType
+    )
+    $Token = GetAuthToken
+     # Write-Verbose "Draft runbooks" -verbose
+     try{
+        $Headers = @{}
+        $Headers.Add("Authorization","bearer "+ " " + "$($Token.AccessToken)")  
+        return Invoke-RestMethod -Uri $Uri -Method Patch -ContentType $ContentType -Headers $Headers -Body $Body
+    }
+    catch{
+        Write-Error -Message $_.Exception
+    }
+}
+
+function EnableAMK{
+    param (
+        $UriStart,
+        $SubId,
+        $ResourceGroupName,
+        $AutomationAccName
+    )
+    $Uri = "https://$UriStart/subscriptions/$SubId/resourceGroups/$ResourceGroupName/providers/Microsoft.Automation/automationAccounts/$AutomationAccName"+"api-version=2020-01-13-preview"
+    $ContentType = "application/text"
+    #Enable MSI
+    $body = '{ "identity" : { "type": "SystemAssigned" } }'
+    InvokePatchRestMethod -Uri $Uri -Body $body -ContentType $ContentType 
+
+    #Enable AMK
+    $amkBody = '{ "properties" : { "encryption": { "keySource": "Microsoft.Automation" } } }'
+    InvokePatchRestMethod -Uri $Uri -Body $amkBody -ContentType $ContentType 
+}
+
+
+function EnableCMK{
+    param (
+        $UriStart,
+        $SubId,
+        $ResourceGroupName,
+        $AutomationAccName
+    )
+    $Uri = "https://$UriStart/subscriptions/$SubId/resourceGroups/$ResourceGroupName/providers/Microsoft.Automation/automationAccounts/$AutomationAccName"+"api-version=2020-01-13-preview"
+    $ContentType = "application/text"
+    
+    #Enable CMK
+    $cmkBody = '{ "properties" : { "encryption": { "keySource": "Microsoft.Keyvault", "keyvaultProperties": { "keyName": "testKey", "keyvaultUri": "https://gatest.vault.azure.net", "keyVersion": "2aab885143cd4463a1f82b6eb6bb567e" } } } }'
+    InvokePatchRestMethod -Uri $Uri -Body $cmkBody -ContentType $ContentType 
+}
 }
