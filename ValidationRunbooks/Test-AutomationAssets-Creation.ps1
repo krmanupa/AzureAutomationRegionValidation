@@ -64,22 +64,40 @@ Write-Error "Module creation failed"
 
 
 ############ Connection ##################
-function CreateConnection {
-    Write-Verbose "Create connections" -verbose
-
+function CreateAzureConnection {
     # ConnectionTypeName=Azure
-    $FieldValues = @{"AutomationCertificateName"="TestCert";"SubscriptionID"="SubId"}
-    $TestAzConnection = New-AzAutomationConnection -Name $AzureConnectionName -ConnectionTypeName Azure -ConnectionFieldValues $FieldValues -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountName
+    $FieldValues = @{"AutomationCertificateName"="TestCert-V1";"SubscriptionID"="SubId-V1"}
+    New-AzAutomationConnection -Name $AzureConnectionName -ConnectionTypeName Azure -ConnectionFieldValues $FieldValues -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountName
+    
+    Start-Sleep -s 60
+    $TestAzConnection = Get-AzAutomationConnection -Name $AzureConnectionName -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountName
     if($TestAzConnection.Name -eq $AzureConnectionName) {
     Write-Output "Azure connection creation successful"
     } 
     else{
     Write-Error "Azure connection creation failed"
     }
-    
+
+    $FieldValues = @{"AutomationCertificateName"="TestCert";"SubscriptionID"="SubId"}
+    Set-AzAutomationConnection -Name $AzureConnectionName -ConnectionTypeName Azure -ConnectionFieldValues $FieldValues -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountName
+
+    Start-Sleep -s 60
+    $TestAzConnection = Get-AzAutomationConnection -Name $AzureConnectionName -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountName
+    if($TestAzConnection.AutomationCertificateName -eq "TestCert") {
+    Write-Output "Azure connection update successful"
+    } 
+    else{
+    Write-Error "Azure connection update failed"
+    }
+}
+
+function CreateAzureServicePrincipalConnection {
     # ConnectionTypeName=AzureServicePrincipal
-    $FieldValues = @{"ApplicationId"="AppId"; "TenantId"="TenantId"; "CertificateThumbprint"="Thumbprint"; "SubscriptionId"="SubId"}
-    $TestAzSPConnection = New-AzAutomationConnection -Name $AzureSPConnectionName -ConnectionTypeName AzureServicePrincipal -ConnectionFieldValues $FieldValues -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountName
+    $FieldValues = @{"ApplicationId"="AppId-V1"; "TenantId"="TenantId-V1"; "CertificateThumbprint"="Thumbprint-V1"; "SubscriptionId"="SubId-V1"}
+    New-AzAutomationConnection -Name $AzureSPConnectionName -ConnectionTypeName AzureServicePrincipal -ConnectionFieldValues $FieldValues -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountName
+
+    Start-Sleep -s 60
+    $TestAzSPConnection = Get-AzAutomationConnection -Name $AzureSPConnectionName -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountName
     if($TestAzSPConnection.Name -like $AzureSPConnectionName) {
     Write-Output "AzureServicePrincipal connection creation successful"
     } 
@@ -87,24 +105,79 @@ function CreateConnection {
     Write-Error "AzureServicePrincipal connection creation failed"
     }
     
+    $FieldValues = @{"ApplicationId"="AppId"; "TenantId"="TenantId"; "CertificateThumbprint"="Thumbprint"; "SubscriptionId"="SubId"}
+    Set-AzAutomationConnection -Name $AzureSPConnectionName -ConnectionTypeName AzureServicePrincipal -ConnectionFieldValues $FieldValues -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountName
+
+    Start-Sleep -s 60
+    $TestAzSPConnection = Get-AzAutomationConnection -Name $AzureSPConnectionName -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountName
+    if($TestAzSPConnection.ApplicationId -like "AppId") {
+    Write-Output "AzureServicePrincipal connection update successful"
+    } 
+    else{
+    Write-Error "AzureServicePrincipal connection update failed"
+    }
+
+}
+
+function CreateAzureClassicCertConnection {
     # ConnectionTypeName=AzureClassicCertificate
-    $FieldValues = @{"SubscriptionName"="SubName"; "SubscriptionId"="SubId"; "CertificateAssetName"="ClassicRunAsAccountCertifcateAssetName"}
-    $TestAzClassicCertConnection = New-AzAutomationConnection -Name $AzureClassicCertConnectionName -ConnectionTypeName AzureClassicCertificate -ConnectionFieldValues $FieldValues -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountName
+    $FieldValues = @{"SubscriptionName"="SubName-V1"; "SubscriptionId"="SubId-V1"; "CertificateAssetName"="ClassicRunAsAccountCertifcateAssetName-V1"}
+    New-AzAutomationConnection -Name $AzureClassicCertConnectionName -ConnectionTypeName AzureClassicCertificate -ConnectionFieldValues $FieldValues -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountName
+    
+    Start-Sleep -s 60
+    $TestAzClassicCertConnection = Get-AzAutomationConnection -Name $AzureClassicCertConnectionName -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountName
     if($TestAzClassicCertConnection.Name -like $AzureClassicCertConnectionName) {
     Write-Output "AzureClassicCertificate connection creation successful"
     } 
     else{
     Write-Error "AzureClassicCertificate connection creation failed"
     }
+
+    $FieldValues = @{"SubscriptionName"="SubName"; "SubscriptionId"="SubId"; "CertificateAssetName"="ClassicRunAsAccountCertifcateAssetName"}
+    Set-AzAutomationConnection -Name $AzureClassicCertConnectionName -ConnectionTypeName AzureClassicCertificate -ConnectionFieldValues $FieldValues -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountName
+    
+    Start-Sleep -s 60
+    $TestAzClassicCertConnection = Get-AzAutomationConnection -Name $AzureClassicCertConnectionName -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountName
+    if($TestAzClassicCertConnection.CertificateAssetName -like "ClassicRunAsAccountCertifcateAssetName") {
+    Write-Output "AzureClassicCertificate connection update successful"
+    } 
+    else{
+    Write-Error "AzureClassicCertificate connection update failed"
+    }
+}
+
+
+function CreateConnection {
+    Write-Verbose "Create connections" -verbose
+    CreateAzureConnection
+    CreateAzureServicePrincipalConnection
+    CreateAzureClassicCertConnection   
 }
 
 ############ Credential ##################
 function CreateCredential {
     Write-Verbose "Create credential" -verbose
+    $User = "Automation\TestCredential-1"
+    $Password = ConvertTo-SecureString "SecurePassword-1" -AsPlainText -Force
+    $Credential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $User, $Password
+    New-AzAutomationCredential -AutomationAccountName $AccountName -Name $CredentialName -Value $Credential -ResourceGroupName $ResourceGroupName
+
+    Start-Sleep -s 60
+    $TestCredential = Get-AzAutomationCredential -AutomationAccountName $AccountName -Name $CredentialName -ResourceGroupName $ResourceGroupName
+    if($TestCredential.UserName -like $User) {
+    Write-Output "Credential creation successful"
+    } 
+    else{
+    Write-Error "Credential creation failed"
+    }
+
     $User = "Automation\TestCredential"
     $Password = ConvertTo-SecureString "SecurePassword" -AsPlainText -Force
     $Credential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $User, $Password
-    $TestCredential = New-AzAutomationCredential -AutomationAccountName $AccountName -Name $CredentialName -Value $Credential -ResourceGroupName $ResourceGroupName
+    Set-AzAutomationCredential -AutomationAccountName $AccountName -Name $CredentialName -Value $Credential -ResourceGroupName $ResourceGroupName
+
+    Start-Sleep -s 60
+    $TestCredential = Get-AzAutomationCredential -AutomationAccountName $AccountName -Name $CredentialName -ResourceGroupName $ResourceGroupName
     if($TestCredential.UserName -like $User) {
     Write-Output "Credential creation successful"
     } 
