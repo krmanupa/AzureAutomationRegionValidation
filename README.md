@@ -1,1 +1,1 @@
-# AutoRegisterHW
+# AzureAutomation Region Validation
