@@ -117,7 +117,7 @@ function CreateCredential {
 ############ Variable ##################
 function CreateStringVariable {
     # string variable, unencryped 
-    [string] $StringVariableValue = "Test String Variable"
+    [string] $StringVariableValue = "Test String Variable - V1"
     New-AzAutomationVariable -Name $StringVariableName -Value $StringVariableValue -Encrypted $False -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
     
     Start-Sleep -s 60
@@ -128,10 +128,22 @@ function CreateStringVariable {
     else{
         Write-Error "String variable creation failed"
     }
+
+    [string] $StringVariableValue = "Test String Variable"
+    Set-AzAutomationVariable --Name $StringVariableName -Value $StringVariableValue -Encrypted $False -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
+
+    Start-Sleep -s 60
+    $TestStringVariable = Get-AzAutomationVariable -AutomationAccountName $AccountName -Name $StringVariableName -ResourceGroupName $ResourceGroupName
+    if($TestStringVariable.Value -like $StringVariableValue) {
+        Write-Output "String variable update successful"
+    } 
+    else{
+        Write-Error "String variable update failed"
+    }
 }
 
 function CreateIntVariable {
-    [int] $IntVariableValue = 12345
+    [int] $IntVariableValue = 12345123
     New-AzAutomationVariable -Name $IntVariableName -Value $IntVariableValue -Encrypted $False -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
 
     $TestIntVariable = Get-AzAutomationVariable -AutomationAccountName $AccountName -Name $IntVariableName -ResourceGroupName $ResourceGroupName
@@ -141,11 +153,22 @@ function CreateIntVariable {
     else{
         Write-Error "Int variable creation failed"
     }
+    
+    [int] $IntVariableValue = 12345
+    Set-AzAutomationVariable -Name $IntVariableName -Value $IntVariableValue -Encrypted $False -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
+
+    $TestIntVariable = Get-AzAutomationVariable -AutomationAccountName $AccountName -Name $IntVariableName -ResourceGroupName $ResourceGroupName
+    if($TestIntVariable.Value -eq $IntVariableValue) {
+        Write-Output "Int variable update successful"
+    } 
+    else{
+        Write-Error "Int variable update failed"
+    }
 }
 
 function CreateBoolVariable {
     # Bool variable
-    [bool] $BoolVariableValue = $false
+    [bool] $BoolVariableValue = $true
     New-AzAutomationVariable -Name $BoolVariableName -Value $BoolVariableValue -Encrypted $False -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
 
     Start-Sleep -s 60
@@ -156,12 +179,24 @@ function CreateBoolVariable {
     else{
         Write-Error "Bool variable creation failed"
     }
+    
+    [bool] $BoolVariableValue = $false
+    Set-AzAutomationVariable -Name $BoolVariableName -Value $BoolVariableValue -Encrypted $False -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
+
+    Start-Sleep -s 60
+    $TestBoolVariable = Get-AzAutomationVariable -AutomationAccountName $AccountName -Name $BoolVariableName -ResourceGroupName $ResourceGroupName
+    if($TestBoolVariable.Value -eq $BoolVariableValue) {
+        Write-Output "Bool variable update successful"
+    } 
+    else{
+        Write-Error "Bool variable update failed"
+    }
 }
 
 function CreateDateTimeVariable {
     # DateTime variable
     #TODO: Fix this
-    [DateTime] $DateTimeVariableValue = ("Thursday, August 13, 2020 10:14:25 AM") | get-date -Format "yyyy-MM-ddTHH:mm:ssZ"
+    [DateTime] $DateTimeVariableValue = ("Thursday, August 3, 2020 10:14:25 AM") | get-date -Format "yyyy-MM-ddTHH:mm:ssZ"
     New-AzAutomationVariable -Name $DateTimeVariableName -Value $DateTimeVariableValue -Encrypted $False -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
 
     Start-Sleep -s 60
@@ -172,11 +207,23 @@ function CreateDateTimeVariable {
     else{
         Write-Error "DateTime variable creation failed"
     }
+
+    [DateTime] $DateTimeVariableValue = ("Thursday, August 13, 2020 10:14:25 AM") | get-date -Format "yyyy-MM-ddTHH:mm:ssZ"
+    Set-AzAutomationVariable -Name $DateTimeVariableName -Value $DateTimeVariableValue -Encrypted $False -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
+
+    Start-Sleep -s 60
+    $TestDateTimeVariable = Get-AzAutomationVariable -AutomationAccountName $AccountName -Name $DateTimeVariableValue -ResourceGroupName $ResourceGroupName
+    if($TestDateTimeVariable.Value -eq $DateTimeVariableValue) {
+        Write-Output "DateTime variable update successful"
+    } 
+    else{
+        Write-Error "DateTime variable update failed"
+    }
 }
 
 function CreateUnspecifiedVariable {
     # Unspecified variable
-    $UnspecifiedVariableValue = "Some Unspecified Value"
+    $UnspecifiedVariableValue = "Some Unspecified Value - V1"
     New-AzAutomationVariable -Name $UnspecifiedVariableName -Value $UnspecifiedVariableValue -Encrypted $False -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName  
 
     Start-Sleep -s 60
@@ -187,12 +234,24 @@ function CreateUnspecifiedVariable {
     else{
         Write-Error "Unspecified variable creation failed"
     }
+    
+    $UnspecifiedVariableValue = "Some Unspecified Value"
+    Set-AzAutomationVariable -Name $UnspecifiedVariableName -Value $UnspecifiedVariableValue -Encrypted $False -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName 
+
+    Start-Sleep -s 60
+    $TestUnspecifiedVariable = Get-AzAutomationVariable -AutomationAccountName $AccountName -Name $UnspecifiedVariableName -ResourceGroupName $ResourceGroupName
+    if($TestUnspecifiedVariable.Value.AutomationAccountName -like $UnspecifiedVariableValue.AutomationAccountName) {
+        Write-Output "Unspecified variable update successful"
+    } 
+    else{
+        Write-Error "Unspecified variable update failed"
+    }
 }
 
 function CreateEncryptedStringVariable {
     # Encrypted variable
-    [string] $EncryptedVariableValue = "Test Encrypted String Variable"
-    $TestEncryptedVariable = New-AzAutomationVariable -Name $EncryptedVariableName -Encrypted $True -Value $EncryptedVariableValue -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
+    [string] $EncryptedVariableValue = "Test Encrypted String Variable - V1"
+    New-AzAutomationVariable -Name $EncryptedVariableName -Encrypted $True -Value $EncryptedVariableValue -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
     
     Start-Sleep -s 60
     $TestEncryptedVariable = Get-AzAutomationVariable -AutomationAccountName $AccountName -Name $EncryptedVariableName -ResourceGroupName $ResourceGroupName
@@ -202,11 +261,24 @@ function CreateEncryptedStringVariable {
     else{
         Write-Error "Encrypted variable creation failed"
     }
+
+    
+    [string] $EncryptedVariableValue = "Test Encrypted String Variable"
+    Set-AzAutomationVariable -Name $EncryptedVariableName -Encrypted $True -Value $EncryptedVariableValue -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
+
+    Start-Sleep -s 60
+    $TestEncryptedVariable = Get-AzAutomationVariable -AutomationAccountName $AccountName -Name $EncryptedVariableName -ResourceGroupName $ResourceGroupName
+    if($TestEncryptedVariable.Encrypted -eq $True) {
+        Write-Output "Encrypted variable update successful"
+    } 
+    else{
+        Write-Error "Encrypted variable update failed"
+    }
 }
 
 function CreateEncryptedIntVariable {
-    [int] $IntVariableValue = 5678
-    $TestIntVariable = New-AzAutomationVariable -Name $IntVariableNameEn -Value $IntVariableValue -Encrypted $True -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
+    [int] $IntVariableValue = 5678123
+    New-AzAutomationVariable -Name $IntVariableNameEn -Value $IntVariableValue -Encrypted $True -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
 
     Start-Sleep -s 60
     $TestIntVariable = Get-AzAutomationVariable -AutomationAccountName $AccountName -Name $IntVariableNameEn -ResourceGroupName $ResourceGroupName
@@ -216,11 +288,24 @@ function CreateEncryptedIntVariable {
     else{
         Write-Error "Encrypted Int variable creation failed"
     }
+
+    
+    [int] $IntVariableValue = 5678
+    Set-AzAutomationVariable -Name $IntVariableNameEn -Value $IntVariableValue -Encrypted $True -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
+
+    Start-Sleep -s 60
+    $TestIntVariable = Get-AzAutomationVariable -AutomationAccountName $AccountName -Name $IntVariableNameEn -ResourceGroupName $ResourceGroupName
+    if($TestIntVariable.Value -eq $IntVariableValue) {
+        Write-Output "Encrypted Int variable update successful"
+    } 
+    else{
+        Write-Error "Encrypted Int variable update failed"
+    }
 }
 
 function CreateEncryptedBoolVariable {
     # Bool variable
-    [bool] $BoolVariableValue = $true
+    [bool] $BoolVariableValue = $false
     New-AzAutomationVariable -Name $BoolVariableNameEn -Value $BoolVariableValue -Encrypted $True -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
 
     Start-Sleep -s 60
@@ -231,12 +316,24 @@ function CreateEncryptedBoolVariable {
     else{
         Write-Error "Encrypted Bool variable creation failed"
     }
+    
+    [bool] $BoolVariableValue = $true
+    Set-AzAutomationVariable -Name $BoolVariableNameEn -Value $BoolVariableValue -Encrypted $True -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
+
+    Start-Sleep -s 60
+    $TestBoolVariable = Get-AzAutomationVariable -AutomationAccountName $AccountName -Name $BoolVariableNameEn -ResourceGroupName $ResourceGroupName
+    if($TestBoolVariable.Value -eq $BoolVariableValue) {
+        Write-Output "Encrypted Bool variable update successful"
+    } 
+    else{
+        Write-Error "Encrypted Bool variable update failed"
+    }
 }
 
 function CreateEncryptedDateTimeVariable {
     # DateTime variable
     #TODO: Fix this
-    [DateTime] $DateTimeVariableValue = ("Thursday, August 1, 2020 10:14:25 AM") | get-date -Format "yyyy-MM-ddTHH:mm:ssZ"
+    [DateTime] $DateTimeVariableValue = ("Thursday, August 2, 2020 10:14:25 AM") | get-date -Format "yyyy-MM-ddTHH:mm:ssZ"
     New-AzAutomationVariable -Name $DateTimeVariableNameEn -Value $DateTimeVariableValue -Encrypted $True -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
 
     Start-Sleep -s 60
@@ -247,12 +344,23 @@ function CreateEncryptedDateTimeVariable {
     else{
         Write-Error "Encrypted DateTime variable creation failed"
     }
+    
+    [DateTime] $DateTimeVariableValue = ("Thursday, August 1, 2020 10:14:25 AM") | get-date -Format "yyyy-MM-ddTHH:mm:ssZ"
+    Set-AzAutomationVariable -Name $DateTimeVariableNameEn -Value $DateTimeVariableValue -Encrypted $True -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
 
+    Start-Sleep -s 60
+    $TestDateTimeVariable = Get-AzAutomationVariable -AutomationAccountName $AccountName -Name $DateTimeVariableNameEn -ResourceGroupName $ResourceGroupName
+    if($TestDateTimeVariable.Value -eq $DateTimeVariableValue) {
+        Write-Output "Encrypted DateTime variable update successful"
+    } 
+    else{
+        Write-Error "Encrypted DateTime variable update failed"
+    }
 }
 
 function CreateEncryptedUnspecifiedVariable {
     # Unspecified variable
-    $UnspecifiedVariableValue = "Some Encrypted Unspecified Value"
+    $UnspecifiedVariableValue = "Some Encrypted Unspecified Value - V1"
     New-AzAutomationVariable -Name $UnspecifiedVariableNameEn -Value $UnspecifiedVariableValue -Encrypted $True -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName    
 
     Start-Sleep -s 60
@@ -262,6 +370,18 @@ function CreateEncryptedUnspecifiedVariable {
     } 
     else{
         Write-Error "Encrypted Unspecified variable creation failed"
+    }
+
+    $UnspecifiedVariableValue = "Some Encrypted Unspecified Value"
+    Set-AzAutomationVariable -Name $UnspecifiedVariableNameEn -Value $UnspecifiedVariableValue -Encrypted $True -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
+
+    Start-Sleep -s 60
+    $TestUnspecifiedVariable = Get-AzAutomationVariable -AutomationAccountName $AccountName -Name $UnspecifiedVariableNameEn -ResourceGroupName $ResourceGroupName
+    if($TestUnspecifiedVariable.Value.AutomationAccountName -like $UnspecifiedVariableValue.AutomationAccountName) {
+        Write-Output "Encrypted Unspecified variable update successful"
+    } 
+    else{
+        Write-Error "Encrypted Unspecified variable update failed"
     }
 }
 
