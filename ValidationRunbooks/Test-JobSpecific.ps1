@@ -269,7 +269,7 @@ sequence {
     $WORKFLOW:workerGroupName = 'test-auto-create'
     $commandToExecute = "powershell .\WorkerDownloadAndRegister.ps1 -workspaceId $WORKFLOW:workspaceId -workspaceKey $WORKFLOW:workspacePrimaryKey -workerGroupName $workerGroupName -agentServiceEndpoint $WORKFLOW:agentEndpoint -aaToken $WORKFLOW:aaPrimaryKey"
 
-    $settings = @{"fileUris" =  @("https://raw.githubusercontent.com/krmanupa/AutoRegisterHW/master/WorkerDownloadAndRegister.ps1"); "commandToExecute" = $commandToExecute};
+    $settings = @{"fileUris" =  @("https://raw.githubusercontent.com/krmanupa/AutoRegisterHW/master/VMExtensionScripts/WorkerDownloadAndRegister.ps1"); "commandToExecute" = $commandToExecute};
     $protectedSettings = @{"storageAccountName" = ""; "storageAccountKey" = ""};
 
     # Run Az VM Extension to download and register worker.
@@ -344,7 +344,7 @@ sequence {
     ## Run AZ VM Extension to download and Install MMA Agent
     $commandToExecute = "powershell .\RemoveHybridworker.ps1 -agentServiceEndpoint $WORKFLOW:agentEndpoint -aaToken $WORKFLOW:aaPrimaryKey"
 
-    $settings = @{"fileUris" =  @("https://raw.githubusercontent.com/krmanupa/AutoRegisterHW/master/RemoveHybridworker.ps1"); "commandToExecute" = $commandToExecute};
+    $settings = @{"fileUris" =  @("https://raw.githubusercontent.com/krmanupa/AutoRegisterHW/master/VMExtensionScripts/RemoveHybridworker.ps1"); "commandToExecute" = $commandToExecute};
     $protectedSettings = @{"storageAccountName" = ""; "storageAccountKey" = ""};
 
     # Run Az VM Extension to download and register worker.
