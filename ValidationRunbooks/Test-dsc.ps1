@@ -37,19 +37,19 @@ catch {
     }
 }
 
-    Write-Verbose "Create VM" -verbose
-    $User = "TestDscVMUser"
-    $Password = ConvertTo-SecureString "SecurePassword12345" -AsPlainText -Force
-    $VMCredential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $User, $Password
-    New-AzVm `
-        -ResourceGroupName $ResourceGroupName `
-        -Name $VMDscName `
-        -Location $location `
-        -VirtualNetworkName "TestDscVnet123" `
-        -SubnetName "TestDscSubnet123" `
-        -SecurityGroupName "TestDscNetworkSecurityGroup123" `
-        -PublicIpAddressName "TestDscPublicIpAddress123" `
-        -Credential $VMCredential
+Write-Verbose "Create VM" -verbose
+$User = "TestDscVMUser"
+$Password = ConvertTo-SecureString "SecurePassword12345" -AsPlainText -Force
+$VMCredential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $User, $Password
+New-AzVm `
+    -ResourceGroupName $ResourceGroupName `
+    -Name $VMDscName `
+    -Location $location `
+    -VirtualNetworkName "TestDscVnet123" `
+    -SubnetName "TestDscSubnet123" `
+    -SecurityGroupName "TestDscNetworkSecurityGroup123" `
+    -PublicIpAddressName "TestDscPublicIpAddress123" `
+    -Credential $VMCredential
 
     Write-Verbose "Get auth token" -verbose
     $currentAzureContext = Get-AzContext
@@ -79,11 +79,11 @@ catch {
   "location": "West Central US"
 }
 "@
-        $body1 = $body | ConvertFrom-Json
-        $body1.location = $location
-        $bodyDsc = $body1 | ConvertTo-Json -Depth 5
-        $PutUri = "$UriStart/resourceGroups/$ResourceGroupName/providers/Microsoft.Automation/automationAccounts/$AccountDscName/configurations/SetupServer?api-version=2015-10-31"
-        Invoke-RestMethod -Uri $PutUri -Method Put -ContentType $contentType3 -Headers $Headers -Body $bodyDsc
+    $body1 = $body | ConvertFrom-Json
+    $body1.location = $location
+    $bodyDsc = $body1 | ConvertTo-Json -Depth 5
+    $PutUri = "$UriStart/resourceGroups/$ResourceGroupName/providers/Microsoft.Automation/automationAccounts/$AccountDscName/configurations/SetupServer?api-version=2015-10-31"
+    Invoke-RestMethod -Uri $PutUri -Method Put -ContentType $contentType3 -Headers $Headers -Body $bodyDsc
     }
     catch{
         Write-Error -Message $_.Exception
