@@ -66,7 +66,7 @@ Write-Error "Module creation failed"
 ############ Connection ##################
 function CreateAzureConnection {
     # ConnectionTypeName=Azure
-    $FieldValues = @{"AutomationCertificateName"="TestCert-V1";"SubscriptionID"="SubId-V1"}
+    $FieldValues = @{"AutomationCertificateName"="TestCert-V1";"SubscriptionID"="SubId"}
     New-AzAutomationConnection -Name $AzureConnectionName -ConnectionTypeName Azure -ConnectionFieldValues $FieldValues -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountName
     
     Start-Sleep -s 60
@@ -78,8 +78,7 @@ function CreateAzureConnection {
     Write-Error "Azure connection creation failed"
     }
 
-    $FieldValues = @{"AutomationCertificateName"="TestCert";"SubscriptionID"="SubId"}
-    Set-AzAutomationConnection -Name $AzureConnectionName -ConnectionTypeName Azure -ConnectionFieldValues $FieldValues -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountName
+    Set-AzAutomationConnectionFieldValue -Name $AzureConnectionName -ConnectionFieldName "AutomationCertificateName" -Value "TestCert" -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountName
 
     Start-Sleep -s 60
     $TestAzConnection = Get-AzAutomationConnection -Name $AzureConnectionName -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountName
@@ -93,7 +92,7 @@ function CreateAzureConnection {
 
 function CreateAzureServicePrincipalConnection {
     # ConnectionTypeName=AzureServicePrincipal
-    $FieldValues = @{"ApplicationId"="AppId-V1"; "TenantId"="TenantId-V1"; "CertificateThumbprint"="Thumbprint-V1"; "SubscriptionId"="SubId-V1"}
+    $FieldValues = @{"ApplicationId"="AppId-V1"; "TenantId"="TenantId"; "CertificateThumbprint"="Thumbprint"; "SubscriptionId"="SubId"}
     New-AzAutomationConnection -Name $AzureSPConnectionName -ConnectionTypeName AzureServicePrincipal -ConnectionFieldValues $FieldValues -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountName
 
     Start-Sleep -s 60
@@ -105,8 +104,7 @@ function CreateAzureServicePrincipalConnection {
     Write-Error "AzureServicePrincipal connection creation failed"
     }
     
-    $FieldValues = @{"ApplicationId"="AppId"; "TenantId"="TenantId"; "CertificateThumbprint"="Thumbprint"; "SubscriptionId"="SubId"}
-    Set-AzAutomationConnection -Name $AzureSPConnectionName -ConnectionTypeName AzureServicePrincipal -ConnectionFieldValues $FieldValues -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountName
+    Set-AzAutomationConnectionFieldValue -Name $AzureSPConnectionName -ConnectionFieldName "ApplicationId" -Value "AppId"  -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountName
 
     Start-Sleep -s 60
     $TestAzSPConnection = Get-AzAutomationConnection -Name $AzureSPConnectionName -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountName
@@ -121,7 +119,7 @@ function CreateAzureServicePrincipalConnection {
 
 function CreateAzureClassicCertConnection {
     # ConnectionTypeName=AzureClassicCertificate
-    $FieldValues = @{"SubscriptionName"="SubName-V1"; "SubscriptionId"="SubId-V1"; "CertificateAssetName"="ClassicRunAsAccountCertifcateAssetName-V1"}
+    $FieldValues = @{"SubscriptionName"="SubName"; "SubscriptionId"="SubId"; "CertificateAssetName"="ClassicRunAsAccountCertifcateAssetName-V1"}
     New-AzAutomationConnection -Name $AzureClassicCertConnectionName -ConnectionTypeName AzureClassicCertificate -ConnectionFieldValues $FieldValues -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountName
     
     Start-Sleep -s 60
@@ -133,8 +131,7 @@ function CreateAzureClassicCertConnection {
     Write-Error "AzureClassicCertificate connection creation failed"
     }
 
-    $FieldValues = @{"SubscriptionName"="SubName"; "SubscriptionId"="SubId"; "CertificateAssetName"="ClassicRunAsAccountCertifcateAssetName"}
-    Set-AzAutomationConnection -Name $AzureClassicCertConnectionName -ConnectionTypeName AzureClassicCertificate -ConnectionFieldValues $FieldValues -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountName
+    Set-AzAutomationConnectionFieldValue -Name $AzureClassicCertConnectionName -ConnectionFieldName "CertificateAssetName" -Value "ClassicRunAsAccountCertifcateAssetName" -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountName
     
     Start-Sleep -s 60
     $TestAzClassicCertConnection = Get-AzAutomationConnection -Name $AzureClassicCertConnectionName -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountName
@@ -353,7 +350,7 @@ function CreateEncryptedIntVariable {
     [int] $IntVariableValue = 5678123
     New-AzAutomationVariable -Name $IntVariableNameEn -Value $IntVariableValue -Encrypted $True -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
 
-    Start-Sleep -s 60
+    Start-Sleep -s 120
     $TestIntVariable = Get-AzAutomationVariable -AutomationAccountName $AccountName -Name $IntVariableNameEn -ResourceGroupName $ResourceGroupName
     if($TestIntVariable.Value -eq $IntVariableValue) {
         Write-Output "Encrypted Int variable creation successful"
@@ -366,7 +363,7 @@ function CreateEncryptedIntVariable {
     [int] $IntVariableValue = 5678
     Set-AzAutomationVariable -Name $IntVariableNameEn -Value $IntVariableValue -Encrypted $True -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
 
-    Start-Sleep -s 60
+    Start-Sleep -s 120
     $TestIntVariable = Get-AzAutomationVariable -AutomationAccountName $AccountName -Name $IntVariableNameEn -ResourceGroupName $ResourceGroupName
     if($TestIntVariable.Value -eq $IntVariableValue) {
         Write-Output "Encrypted Int variable update successful"
@@ -381,7 +378,7 @@ function CreateEncryptedBoolVariable {
     [bool] $BoolVariableValue = $false
     New-AzAutomationVariable -Name $BoolVariableNameEn -Value $BoolVariableValue -Encrypted $True -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
 
-    Start-Sleep -s 60
+    Start-Sleep -s 120
     $TestBoolVariable = Get-AzAutomationVariable -AutomationAccountName $AccountName -Name $BoolVariableNameEn -ResourceGroupName $ResourceGroupName
     if($TestBoolVariable.Value -eq $BoolVariableValue) {
         Write-Output "Encrypted Bool variable creation successful"
@@ -393,7 +390,7 @@ function CreateEncryptedBoolVariable {
     [bool] $BoolVariableValue = $true
     Set-AzAutomationVariable -Name $BoolVariableNameEn -Value $BoolVariableValue -Encrypted $True -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
 
-    Start-Sleep -s 60
+    Start-Sleep -s 120
     $TestBoolVariable = Get-AzAutomationVariable -AutomationAccountName $AccountName -Name $BoolVariableNameEn -ResourceGroupName $ResourceGroupName
     if($TestBoolVariable.Value -eq $BoolVariableValue) {
         Write-Output "Encrypted Bool variable update successful"

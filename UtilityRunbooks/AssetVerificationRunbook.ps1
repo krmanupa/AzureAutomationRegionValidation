@@ -347,15 +347,21 @@ function VerifyConnecion {
     }
 }
 
-VerifyStringVariable
-VerifyIntVariable
-VerifyBoolVariable
-# VerifyDateTimeVariable
-VerifyUnspecifiedVariable
+function VerifyVariables {
+    VerifyStringVariable
+    VerifyIntVariable
+    VerifyBoolVariable
+    VerifyDateTimeVariable
+    VerifyUnspecifiedVariable
 
-VerifyEncryptedVariable
-VerifyEncryptedIntVariable
-VerifyEncryptedBoolVariable
-# VerifyEncryptedDateTimeVariable
-VerifyEncryptedUnspecifiedVariable
+    VerifyEncryptedVariable
+    VerifyEncryptedIntVariable
+    VerifyEncryptedBoolVariable
+    VerifyEncryptedDateTimeVariable
+    VerifyEncryptedUnspecifiedVariable
+}
+
+VerifyVariables
+VerifyConnecion
+VerifyCredential
 
