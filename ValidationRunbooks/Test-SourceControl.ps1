@@ -117,19 +117,17 @@ function TestSourceControlForGitRepo {
                                               -Name $githubRepoName `
     
     Start-Sleep -s 60
-    try {
-        $gitSourceControl = Get-AzAutomationSourceControl   -ResourceGroupName $ResourceGroupName `
+    $gitSourceControl = Get-AzAutomationSourceControl   -ResourceGroupName $ResourceGroupName `
                                                         -AutomationAccountName $AccountName `
                                                         -Name $githubRepoName
+    
+    if($null -eq $gitSourceControl){
+        Write-Output "GitHub Repo - Deleted SourceControl successfully."
     }
-    catch {
-        if($_.Exception.Message -contains "'$githubRepoName' does not exist"){
-            Write-Output "GitHub Repo - Deleted SourceControl successfully."
-        }
-        else{
-            Write-Error $_.Exception.Message
-        }
+    else{
+        Write-Output "GitHub Repo - Delete SourceControl failed."
     }
+    
 }
 
 
@@ -173,18 +171,11 @@ function TestSourceControlForVsoGitUrlType1 {
                                               -Name $vsoGitName_Type1   
     
     Start-Sleep -s 60
-    try {
-        $gitSourceControl = Get-AzAutomationSourceControl   -ResourceGroupName $ResourceGroupName `
-                                                        -AutomationAccountName $AccountName `
-                                                        -Name $vsoGitName_Type1
+    if($null -eq $gitSourceControl){
+        Write-Output "VsoGit-1 Repo - Deleted SourceControl successfully."
     }
-    catch {
-        if($_.Exception.Message -contains "'$vsoGitName_Type1' does not exist"){
-            Write-Output "VSO Git Type1 - Deleted SourceControl successfully."
-        }
-        else{
-            Write-Error $_.Exception.Message
-        }
+    else{
+        Write-Output "VsoGit-1 Repo - Delete SourceControl failed."
     }
 
 }
@@ -230,20 +221,12 @@ function TestSourceControlForVsoGitUrlType2 {
                                               -Name $vsoGitName_Type2   
     
     Start-Sleep -s 60
-    try {
-        $gitSourceControl = Get-AzAutomationSourceControl   -ResourceGroupName $ResourceGroupName `
-                                                        -AutomationAccountName $AccountName `
-                                                        -Name $vsoGitName_Type2
+    if($null -eq $gitSourceControl){
+        Write-Output "VsoGit-2 Repo - Deleted SourceControl successfully."
     }
-    catch {
-        if($_.Exception.Message -contains "'$vsoGitName_Type2' does not exist"){
-            Write-Output "VSO Git Type2 - Deleted SourceControl successfully."
-        }
-        else{
-            Write-Error $_.Exception.Message
-        }
-    }
-
+    else{
+        Write-Output "VsoGit-2 Repo - Delete SourceControl failed."
+    }=
 }
 
 function TestSourceControlForVsoGitUrlType3 {
@@ -287,20 +270,12 @@ function TestSourceControlForVsoGitUrlType3 {
                                               -Name $vsoGitName_Type3   
     
     Start-Sleep -s 60
-    try {
-        $gitSourceControl = Get-AzAutomationSourceControl   -ResourceGroupName $ResourceGroupName `
-                                                        -AutomationAccountName $AccountName `
-                                                        -Name $vsoGitName_Type3
+    if($null -eq $gitSourceControl){
+        Write-Output "VsoGit-3 Repo - Deleted SourceControl successfully."
     }
-    catch {
-        if($_.Exception.Message -contains "'$vsoGitName_Type3' does not exist"){
-            Write-Output "VSO Git Type3 - Deleted SourceControl successfully."
-        }
-        else{
-            Write-Error $_.Exception.Message
-        }
+    else{
+        Write-Output "VsoGit-3 Repo - Delete SourceControl failed."
     }
-
 }
 function TestSourceControlVsoGitRepo {
     TestSourceControlForVsoGitUrlType1
