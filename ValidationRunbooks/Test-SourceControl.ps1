@@ -31,22 +31,65 @@ catch {
     }
 }
 
+function CheckSyncJob {
+    param (
+        $repoName,
+        $runbookNameOnTheGit
+    )
+    Write-Output "Starting Sync job on $repoName"
+    $syncJob = Start-AzAutomationSourceControlSyncJob -ResourceGroupName $ResourceGroupName `
+                                                    -AutomationAccountName $AccountName `
+                                                    -Name $repoName
 
+    $jobId = $syncJob.JobId
+    Write-Output "Sync JobId : $jobId"
+    Start-Sleep -Seconds 300
 
+    $runbookInTheAA = Get-AzAutomationRunbook -Name $runbookNameOnTheGit -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
 
+    if($runbookInTheAA.Name -eq $runbookNameOnTheGit){
+        Write-Output "Sync job succeeded"
+    }
+    else{
+        Write-Error "Sync job failed"
+    }
+}
+
+function VerifyUpdateOfSC {
+    param (
+        $repoName
+    )
+    # Update the source control
+    Update-AzAutomationSourceControl -ResourceGroupName $ResourceGroupName `
+                                      -AutomationAccountName $AccountName `
+                                      -Name $repoName `
+                                      -PublishRunbook $false
+    
+    Start-Sleep -s 60
+    $gitSourceControl = Get-AzAutomationSourceControl   -ResourceGroupName $ResourceGroupName `
+                                                        -AutomationAccountName $AccountName `
+                                                        -Name $repoName 
+    
+    if($gitSourceControl.PublishRunbook -eq $false){
+        Write-Output "GitHub Repo - Source Control Update Successful"
+    }
+    else{
+        Write-Error "GitHub Repo - Source Control Update Failed"
+    }
+}
 
 function TestSourceControlForGitRepo {
-    $githubRepoName = "vinkumarGithub"
-    $githubAccessToken = "48d726ce238b58ae39c28312e96d3bb1cf6210f3"
+    $githubRepoName = "krmanupaGitHub"
+    $githubAccessToken = "8664c0eea4fe6b1801c77d653325ac10e8b2b458"
     $githubAccessTokenStr = ConvertTo-SecureString -String $githubAccessToken -AsPlainText -Force
     # Create the Source Control
     New-AzAutomationSourceControl -ResourceGroupName $ResourceGroupName `
                                            -AutomationAccountName $AccountName `
                                            -Name  $githubRepoName `
-                                           -RepoUrl "https://github.com/Vinkumar-ms/AzureAutomation.git" `
+                                           -RepoUrl "https://github.com/krmanupa/SourceControlValidation.git" `
                                            -SourceType "Github" `
                                            -Branch "master" `
-                                           -FolderPath "/AzureAutomation/Runbooks/PowershellScripts" `
+                                           -FolderPath "/" `
                                            -AccessToken $githubAccessTokenStr `
                                            -EnableAutoSync
     Start-Sleep -s 60                     
@@ -54,30 +97,19 @@ function TestSourceControlForGitRepo {
                                                         -AutomationAccountName $AccountName `
                                                         -Name $githubRepoName 
     
-    if($gitSourceControl.FolderPath -like "/AzureAutomation/Runbooks/PowershellScripts"){
+    if($gitSourceControl.FolderPath -like "/"){
         Write-Output "GitHub Repo - Source Control Creation Successful"
     }
     else{
         Write-Error "GitHub Repo - Source Control Creation Failed"
     }
 
+    # Check the sync job
+    $runbookOnTheGit = "TestRunbook"
+    CheckSyncJob -repoName $githubRepoName -runbookNameOnTheGit $runbookOnTheGit
+
     # Update the source control
-    Update-AzAutomationSourceControl -ResourceGroupName $ResourceGroupName `
-                                      -AutomationAccountName $AccountName `
-                                      -Name $githubRepoName `
-                                      -PublishRunbook $false
-    
-    Start-Sleep -s 60
-    $gitSourceControl = Get-AzAutomationSourceControl   -ResourceGroupName $ResourceGroupName `
-                                                        -AutomationAccountName $AccountName `
-                                                        -Name $githubRepoName 
-    
-    if($gitSourceControl.PublishRunbook -eq $false){
-        Write-Output "GitHub Repo - Source Control Update Successful"
-    }
-    else{
-        Write-Error "GitHub Repo - Source Control Update Failed"
-    }   
+    VerifyUpdateOfSC -repoName $githubRepoName   
     
     # Delete the source control
     Remove-AzAutomationSourceControl -ResourceGroupName $ResourceGroupName `
@@ -128,23 +160,12 @@ function TestSourceControlForVsoGitUrlType1 {
         Write-Error "VSO Git Type1 - Source Control Creation Failed"
     }
 
+    # Check the sync job
+    $runbookNameOnTheVSOGit = "SimpleHelloScriptRepo1"
+    CheckSyncJob -repoName $vsoGitName_Type1 -runbookNameOnTheGit $runbookNameOnTheVSOGit
+
     # Update the source control
-    Update-AzAutomationSourceControl -ResourceGroupName $ResourceGroupName `
-                                      -AutomationAccountName $AccountName `
-                                      -Name $vsoGitName_Type1 `
-                                      -PublishRunbook $false
-    
-    Start-Sleep -s 60
-    $gitSourceControl = Get-AzAutomationSourceControl   -ResourceGroupName $ResourceGroupName `
-                                                        -AutomationAccountName $AccountName `
-                                                        -Name $vsoGitName_Type1 
-    
-    if($gitSourceControl.PublishRunbook -eq $false){
-        Write-Output "VSO Git Type1 - Source Control Update Successful"
-    }
-    else{
-        Write-Error "VSO Git Type1 - Source Control Update Failed"
-    }   
+    VerifyUpdateOfSC -repoName $vsoGitName_Type1  
     
     # Delete the source control
     Remove-AzAutomationSourceControl -ResourceGroupName $ResourceGroupName `
@@ -196,23 +217,12 @@ function TestSourceControlForVsoGitUrlType2 {
         Write-Error "VSO Git Type2 - Source Control Creation Failed"
     }
 
+    # check the sync job 
+    $runbookNameOnTheVsoGit_type2 = "VSOTestProjectRunbook"
+    CheckSyncJob -repoName $vsoGitName_Type2 -runbookNameOnTheGit $runbookNameOnTheVsoGit_type2
+
     # Update the source control
-    Update-AzAutomationSourceControl -ResourceGroupName $ResourceGroupName `
-                                      -AutomationAccountName $AccountName `
-                                      -Name $vsoGitName_Type2 `
-                                      -PublishRunbook $false
-    
-    Start-Sleep -s 60
-    $gitSourceControl = Get-AzAutomationSourceControl   -ResourceGroupName $ResourceGroupName `
-                                                        -AutomationAccountName $AccountName `
-                                                        -Name $vsoGitName_Type2 
-    
-    if($gitSourceControl.PublishRunbook -eq $false){
-        Write-Output "VSO Git Type2 - Source Control Update Successful"
-    }
-    else{
-        Write-Error "VSO Git Type2 - Source Control Update Failed"
-    }   
+    VerifyUpdateOfSC -repoName $vsoGitName_Type2   
     
     # Delete the source control
     Remove-AzAutomationSourceControl -ResourceGroupName $ResourceGroupName `
@@ -264,23 +274,12 @@ function TestSourceControlForVsoGitUrlType3 {
         Write-Error "VSO Git Type3 - Source Control Creation Failed"
     }
 
+    # Check the sync 
+    $runbookNameOnTheVsoGit_Type3 = "SimpleHelloScriptRepo2"
+    CheckSyncJob -repoName $vsoGitName_Type3 -runbookNameOnTheGit $runbookNameOnTheVsoGit_Type3
+
     # Update the source control
-    Update-AzAutomationSourceControl -ResourceGroupName $ResourceGroupName `
-                                      -AutomationAccountName $AccountName `
-                                      -Name $vsoGitName_Type3 `
-                                      -PublishRunbook $false
-    
-    Start-Sleep -s 60
-    $gitSourceControl = Get-AzAutomationSourceControl   -ResourceGroupName $ResourceGroupName `
-                                                        -AutomationAccountName $AccountName `
-                                                        -Name $vsoGitName_Type3 
-    
-    if($gitSourceControl.PublishRunbook -eq $false){
-        Write-Output "VSO Git Type3 - Source Control Update Successful"
-    }
-    else{
-        Write-Error "VSO Git Type3 - Source Control Update Failed"
-    }   
+    VerifyUpdateOfSC -repoName $vsoGitName_Type3   
     
     # Delete the source control
     Remove-AzAutomationSourceControl -ResourceGroupName $ResourceGroupName `
