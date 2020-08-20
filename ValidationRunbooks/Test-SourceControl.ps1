@@ -31,21 +31,14 @@ catch {
     }
 }
 
-# VSTS Personal access token
 
-$allaccesstoken2 = "lxvaiexxou7hr5o4x76cy7dz7t3s3jjgctia32p4ster5ot2swhq"
-$allaccessToken2Str = ConvertTo-SecureString -String $allaccesstoken2 -AsPlainText -Force
-
-$omairdoctoken = "hmd4vrqg7ylqtqco4pe5ya6oxpylaczvzsu3o3b43e5vrfk5rbva"
-$omairdocaccessTokenStr = ConvertTo-SecureString -String $omairdoctoken -AsPlainText -Force
-
-$githubAccessToken = "48d726ce238b58ae39c28312e96d3bb1cf6210f3"
-$githubAccessTokenStr = ConvertTo-SecureString -String $githubAccessToken -AsPlainText -Force
 
 
 
 function TestSourceControlForGitRepo {
     $githubRepoName = "vinkumarGithub"
+    $githubAccessToken = "48d726ce238b58ae39c28312e96d3bb1cf6210f3"
+    $githubAccessTokenStr = ConvertTo-SecureString -String $githubAccessToken -AsPlainText -Force
     # Create the Source Control
     New-AzAutomationSourceControl -ResourceGroupName $ResourceGroupName `
                                            -AutomationAccountName $AccountName `
@@ -90,7 +83,6 @@ function TestSourceControlForGitRepo {
     Remove-AzAutomationSourceControl -ResourceGroupName $ResourceGroupName `
                                               -AutomationAccountName $AccountName `
                                               -Name $githubRepoName `
-                                              -Force
     
     Start-Sleep -s 60
     try {
@@ -111,6 +103,8 @@ function TestSourceControlForGitRepo {
 
 function TestSourceControlForVsoGitUrlType1 {
     $vsoGitName_Type1 = "vinkumarRepoVsoGitPowershellAllAccessToken"
+    $allaccesstoken2 = "lxvaiexxou7hr5o4x76cy7dz7t3s3jjgctia32p4ster5ot2swhq"
+    $allaccessToken2Str = ConvertTo-SecureString -String $allaccesstoken2 -AsPlainText -Force
 
     New-AzAutomationSourceControl -ResourceGroupName $ResourceGroupName `
     -AutomationAccountName $AccountName `
@@ -156,7 +150,6 @@ function TestSourceControlForVsoGitUrlType1 {
     Remove-AzAutomationSourceControl -ResourceGroupName $ResourceGroupName `
                                               -AutomationAccountName $AccountName `
                                               -Name $vsoGitName_Type1   
-                                              -Force
     
     Start-Sleep -s 60
     try {
@@ -177,7 +170,9 @@ function TestSourceControlForVsoGitUrlType1 {
 
 function TestSourceControlForVsoGitUrlType2 {
     $vsoGitName_Type2 = "vinkumarRepoVsoGitPowershellDocPermOmair"
-
+    $omairdoctoken = "hmd4vrqg7ylqtqco4pe5ya6oxpylaczvzsu3o3b43e5vrfk5rbva"
+    $omairdocaccessTokenStr = ConvertTo-SecureString -String $omairdoctoken -AsPlainText -Force
+    
     New-AzAutomationSourceControl -ResourceGroupName $ResourceGroupName `
     -AutomationAccountName $AccountName `
     -Name  $vsoGitName_Type2 `
@@ -223,7 +218,6 @@ function TestSourceControlForVsoGitUrlType2 {
     Remove-AzAutomationSourceControl -ResourceGroupName $ResourceGroupName `
                                               -AutomationAccountName $AccountName `
                                               -Name $vsoGitName_Type2   
-                                              -Force
     
     Start-Sleep -s 60
     try {
@@ -244,6 +238,8 @@ function TestSourceControlForVsoGitUrlType2 {
 
 function TestSourceControlForVsoGitUrlType3 {
     $vsoGitName_Type3 = "vinkumarRepoVsoGitPowershellRepo2"
+    $allaccesstoken2 = "lxvaiexxou7hr5o4x76cy7dz7t3s3jjgctia32p4ster5ot2swhq"
+    $allaccessToken2Str = ConvertTo-SecureString -String $allaccesstoken2 -AsPlainText -Force
     
     New-AzAutomationSourceControl -ResourceGroupName $ResourceGroupName `
     -AutomationAccountName $AccountName `
@@ -290,7 +286,6 @@ function TestSourceControlForVsoGitUrlType3 {
     Remove-AzAutomationSourceControl -ResourceGroupName $ResourceGroupName `
                                               -AutomationAccountName $AccountName `
                                               -Name $vsoGitName_Type3   
-                                              -Force
     
     Start-Sleep -s 60
     try {
