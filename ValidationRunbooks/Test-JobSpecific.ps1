@@ -369,20 +369,9 @@ parallel {
 
 # De register the HW
 sequence {
-    Start-Sleep -s 420
-    $deregisterParams = @{"agentServiceEndpoint" = $WORKFLOW:agentEndpoint; "aaToken" = $WORKFLOW:aaPrimaryKey}
-    Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name "DeregisterHW"  -ResourceGroupName $ResourceGroupName -Parameters $deregisterParams -RunOn $WORKFLOW:workerGroupName
-
-    #verify if this account doesnt have any machines under this workergroup
-    Start-Sleep -s 100
-    $workers = Get-AzAutomationHybridWorkerGroup -ResourceGroupName ResourceGroupName -AutomationAccountName $AccountName -Name $WORKFLOW:workerGroupName
-    if($null -eq $workers){
-        Write-Output "Worker Deregistered Successfully"
-    }
-    else{
-        Write-Error "Worker Deregistration failed..."
-    }
-
+    # Start-Sleep -s 600
+    # $deregisterParams = @{"agentServiceEndpoint" = $WORKFLOW:agentEndpoint; "aaToken" = $WORKFLOW:aaPrimaryKey}
+    # Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name "DeregisterHW"  -ResourceGroupName $ResourceGroupName -Parameters $deregisterParams -RunOn $WORKFLOW:workerGroupName
     #TODO: Delete the HWG cmdlet also
 }
 

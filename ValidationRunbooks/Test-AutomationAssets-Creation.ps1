@@ -6,7 +6,9 @@ Param(
 [Parameter(Mandatory = $true)]
 [string] $AccountName,
 [Parameter(Mandatory = $false)]
-[string] $Environment="AzureCloud"
+[string] $Environment="AzureCloud",
+[Parameter(Mandatory = $false)]
+[string] $UriStart = "https://management.azure.com/subscriptions/cd45f23b-b832-4fa4-a434-1bf7e6f14a5a"
 )
 $connectionName = "AzureRunAsConnection"
 try
@@ -458,6 +460,54 @@ function CreateEncryptedUnspecifiedVariable {
     }
 }
 
+function CreateCertificate {
+    Write-Verbose "Get auth token" -verbose
+    $currentAzureContext = Get-AzContext
+    $azureRmProfile = [Microsoft.Azure.Commands.Common.Authentication.Abstractions.AzureRmProfileProvider]::Instance.Profile
+    $profileClient = New-Object Microsoft.Azure.Commands.ResourceManager.Common.RMProfileClient($azureRmProfile)
+    $Token = $profileClient.AcquireAccessToken($currentAzureContext.Tenant.TenantId)
+
+    Write-Verbose "Create certificate" -verbose
+    $certName = "testCert"
+    try{
+    $Headers = @{}
+    $Headers.Add("Authorization","bearer "+ " " + "$($Token.AccessToken)")
+    $contentType3 = "application/json"
+    $bodyCert = @"
+            {
+    "name": "testCert",
+    "properties": {
+    "base64Value": "MIIC5DCCAcygAwIBAgIQRHw/PpDU95xN9GYFa5vUHTANBgkqhkiG9w0BAQ0FADAuMSwwKgYDVQQDEyNHZW5ldmEgVGVzdCBTdXNiY3JpcHRpb24gTWFuYWdlbWVudDAeFw0xNTEwMDkxODA3MDNaFw0xNzEwMDgxODA3MDNaMC4xLDAqBgNVBAMTI0dlbmV2YSBUZXN0IFN1c2JjcmlwdGlvbiBNYW5hZ2VtZW50MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAjV+X9b/qeFNffLUL/TayLAA5GYoNsvLsVvBebezrdiwi/KeSD3uS0rw8X0QrMn6LWH/RxKs1S8A7UxMZjR6pse5FAZv9A3SHT2dmW5CYDQ7vKyqTB/BeOZch02GMqAkyr3KV7zl0Uj6RYq4Avx0PA2AAg73RXf7s0UtB7e7GnzgKR83/Gj/EaXas21x78IF8sDBVqT3LvvPNSTOlB2/jlwQ9pOijvVpPmvTeChfRmaU8o+oIUJJGLhFDQJkKNw7ZkwkNmY0hijovi63J+hO6ikA9cKvQh4sOiNwKWEIhzxnNmI7O2uDidV4knpV7JbuejrKJemy4rTb0VLuEPpIq0QIDAQABMA0GCSqGSIb3DQEBDQUAA4IBAQAx8ai4hl5GuwPYQMC2V+jzgyROjasvygm+bpo5pWwIr47hbHkN6r5N6Dmp1Vf8xo7uQudzUAS3YVdMakSRQNOzo9mFTKqYLmSA2NI9l2J+TlJnAIbJhqVHCRoQ0Fn2kC5mBb4unQbIVTurb75EGQTHf55LDk3GPrZwpNVsw6nHM+Gy5GL6Vz1J30ZoAaAnNzOfyrJ4J352pCx9FgH3TzD3fhvZODjDrQfankb/yHCBlYx3WyiR+3n8K01qg4L3V9Z+PeFS4pDMN+2zfuOqNCefKKKn1wMyHbXDq1/29OrqJQvueStZ8l3X39umKrhnDwriGIwlgPevuSp23alpF9BY"
+    }
+    }
+"@
+    $PutUri = "$UriStart/resourceGroups/$ResourceGroupName/providers/Microsoft.Automation/automationAccounts/$AccountName/certificates/testCert?api-version=2015-10-31"
+    Invoke-RestMethod -Uri $PutUri -Method Put -ContentType $contentType3 -Headers $Headers -Body $bodyCert
+    }
+    catch{
+    Write-Error -Message $_.Exception
+    }
+
+    $Cert = Get-AzAutomationCertificate -Name $certName -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
+    if($Cert.Thumbprint -like "edfab8580e873bbc2ac188ed6d02411019b7d8d3") {
+        Write-Output "Certificate asset creation successful"
+    } 
+    else{
+        Write-Error "Certificate asset creation failed"
+    }
+
+    $updatedDesc = "Description Updated"
+    Set-AzAutomationCertificate -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName -Name $certName -Description $updatedDesc
+
+    $updatedCert = Get-AzAutomationCertificate -Name $certName -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
+    if($updatedCert.Description -eq $updatedDesc){
+        Write-Output "Automation Certificate Update successful"
+    }
+    else{
+        Write-Error "Automation Certificate Update failed"
+    }
+}
+
 function CreateVariables {
     Write-Verbose "Create variables" -verbose
     
@@ -481,42 +531,9 @@ CreateVariables
 CreateConnection
 CreateCredential
 
-############ Certificate ##################
 
 
-#         Write-Verbose "Get auth token" -verbose
-#     $currentAzureContext = Get-AzContext
-#     $azureRmProfile = [Microsoft.Azure.Commands.Common.Authentication.Abstractions.AzureRmProfileProvider]::Instance.Profile
-#     $profileClient = New-Object Microsoft.Azure.Commands.ResourceManager.Common.RMProfileClient($azureRmProfile)
-#     $Token = $profileClient.AcquireAccessToken($currentAzureContext.Tenant.TenantId)
 
-#     Write-Verbose "Create certificate" -verbose
-#     try{
-#         $Headers = @{}
-#         $Headers.Add("Authorization","bearer "+ " " + "$($Token.AccessToken)")
-#         $contentType3 = "application/json"
-#         $bodyCert = @"
-#                 {
-#   "name": "testCert",
-#   "properties": {
-#     "base64Value": "MIIC5DCCAcygAwIBAgIQRHw/PpDU95xN9GYFa5vUHTANBgkqhkiG9w0BAQ0FADAuMSwwKgYDVQQDEyNHZW5ldmEgVGVzdCBTdXNiY3JpcHRpb24gTWFuYWdlbWVudDAeFw0xNTEwMDkxODA3MDNaFw0xNzEwMDgxODA3MDNaMC4xLDAqBgNVBAMTI0dlbmV2YSBUZXN0IFN1c2JjcmlwdGlvbiBNYW5hZ2VtZW50MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAjV+X9b/qeFNffLUL/TayLAA5GYoNsvLsVvBebezrdiwi/KeSD3uS0rw8X0QrMn6LWH/RxKs1S8A7UxMZjR6pse5FAZv9A3SHT2dmW5CYDQ7vKyqTB/BeOZch02GMqAkyr3KV7zl0Uj6RYq4Avx0PA2AAg73RXf7s0UtB7e7GnzgKR83/Gj/EaXas21x78IF8sDBVqT3LvvPNSTOlB2/jlwQ9pOijvVpPmvTeChfRmaU8o+oIUJJGLhFDQJkKNw7ZkwkNmY0hijovi63J+hO6ikA9cKvQh4sOiNwKWEIhzxnNmI7O2uDidV4knpV7JbuejrKJemy4rTb0VLuEPpIq0QIDAQABMA0GCSqGSIb3DQEBDQUAA4IBAQAx8ai4hl5GuwPYQMC2V+jzgyROjasvygm+bpo5pWwIr47hbHkN6r5N6Dmp1Vf8xo7uQudzUAS3YVdMakSRQNOzo9mFTKqYLmSA2NI9l2J+TlJnAIbJhqVHCRoQ0Fn2kC5mBb4unQbIVTurb75EGQTHf55LDk3GPrZwpNVsw6nHM+Gy5GL6Vz1J30ZoAaAnNzOfyrJ4J352pCx9FgH3TzD3fhvZODjDrQfankb/yHCBlYx3WyiR+3n8K01qg4L3V9Z+PeFS4pDMN+2zfuOqNCefKKKn1wMyHbXDq1/29OrqJQvueStZ8l3X39umKrhnDwriGIwlgPevuSp23alpF9BY"
-#   }
-# }
-# "@
-#         $PutUri = "$UriStart/resourceGroups/$ResourceGroupName/providers/Microsoft.Automation/automationAccounts/$AccountName/certificates/testCert?api-version=2015-10-31"
-#         Invoke-RestMethod -Uri $PutUri -Method Put -ContentType $contentType3 -Headers $Headers -Body $bodyCert
-#     }
-#     catch{
-#         Write-Error -Message $_.Exception
-#     }
-
-#     $Cert = Get-AzAutomationCertificate -Name "testCert" -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
-#     if($Cert.Thumbprint -like "edfab8580e873bbc2ac188ed6d02411019b7d8d3") {
-#         Write-Output "Certificate asset creation successful"
-#     } 
-#     else{
-#         Write-Error "Certificate asset creation failed"
-#     }
 
 
 

@@ -2,28 +2,6 @@ Param(
 [Parameter(Mandatory = $true)]
 [string] $guid
 )
-$connectionName = "AzureRunAsConnection"
-try
-{
-    $servicePrincipalConnection = Get-AutomationConnection -Name $connectionName      
-    Write-Verbose "Logging in to Azure..." -verbose
-    Connect-AzAccount `
-        -ServicePrincipal `
-        -TenantId $servicePrincipalConnection.TenantId `
-        -ApplicationId $servicePrincipalConnection.ApplicationId `
-        -CertificateThumbprint $servicePrincipalConnection.CertificateThumbprint `
-        -Environment "AzureCloud"
-}
-catch {
-    if (!$servicePrincipalConnection)
-    {
-        $ErrorMessage = "Connection $connectionName not found."
-        throw $ErrorMessage
-    } else{
-        Write-Error -Message $_.Exception
-        throw $_.Exception
-    }
-}
 
 $AzureConnectionName = "TestAzConnectionName"  + "-" + $guid
 $AzureSPConnectionName = "TestAzSPConnectionName"  + "-" + $guid
@@ -48,6 +26,8 @@ $expectedFieldValuesAzureConnection = @{"AutomationCertificateName"="TestCert";"
 $expectedFieldValuesAzureSP = @{"ApplicationId"="AppId"; "TenantId"="TenantId"; "CertificateThumbprint"="Thumbprint"; "SubscriptionId"="SubId"}
 $expectedFieldValuesAzureCC = @{"SubscriptionName"="SubName"; "SubscriptionId"="SubId"; "CertificateAssetName"="ClassicRunAsAccountCertifcateAssetName"}
 
+$certName = "testCert"
+$expectedCertThumbprint = "edfab8580e873bbc2ac188ed6d02411019b7d8d3"
 
 $expectedUser = "Automation\TestCredential"
 
@@ -348,6 +328,15 @@ function VerifyConnection {
         Write-Error "Azure classic certificate connection Get Failed"
     }
 }
+function VerifyCertificate {
+    $certRetrieved = Get-AutomationCertificate -Name $certName
+    if($certRetrieved.Thumbprint -like $expectedCertThumbprint){
+        Write-Output "Azure Certificate Get Successfull"
+    }
+    else{
+        Write-Error "Azure Certificate Get Failed"
+    }
+}
 
 function VerifyVariables {
     VerifyStringVariable
@@ -363,8 +352,10 @@ function VerifyVariables {
     VerifyEncryptedUnspecifiedVariable
 }
 
+
 # TODO : Verify certificate and modules
 VerifyVariables
 VerifyConnection
 VerifyCredential
+VerifyCertificate
 
