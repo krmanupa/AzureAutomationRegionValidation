@@ -1,13 +1,13 @@
 workflow Test-JobSpecific {
     Param(
         [Parameter(Mandatory = $false)]
-        [string] $location = "West Europe",  
+        [string] $location = "West Central US",  
         [Parameter(Mandatory = $false)]
         [string] $Environment = "AzureCloud", 
         [Parameter(Mandatory = $false)]
-        [string] $ResourceGroupName = "krmanupa-test-auto",
+        [string] $ResourceGroupName = "Test-auto-creation",
         [Parameter(Mandatory = $false)]
-        [string] $AccountName = "krmanupa-base-aa",
+        [string] $AccountName = "Test-auto-creation-aa",
         [Parameter(Mandatory = $false)]
         [string] $WorkspaceName = "Test-LAWorkspace",
         [Parameter(Mandatory = $false)]
@@ -20,15 +20,16 @@ workflow Test-JobSpecific {
         [string]$AssetVerificationRunbookPSName = "AssetVerificationRunbook"
         )
 
-        
-
-$vmName = "Test-VM-1234" 
 $workspaceId = ""
 $workspacePrimaryKey = ""
 $agentEndpoint = ""
 $aaPrimaryKey = ""
-$guid = ""
-$workerGroupName = ""
+$workerGroupName = "test-auto-create"
+
+$guid_val = [guid]::NewGuid()
+$guid = $guid_val.ToString()
+
+$vmName = "Test-VM-" + $guid.SubString(0,4) 
 $assetVerificationRunbookParams = @{"guid" = $guid}
 
 function Connect-To-AzAccount{
@@ -67,21 +68,38 @@ function Start-PythonJob {
         [string] $runOn = ""
     )
     # Python2
-    $JobHybridPy2 = Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name $RunbookPython2Name  -ResourceGroupName $ResourceGroupName -RunOn $runOn -MaxWaitSeconds 600 -Wait
-    $pythonRbJobId = $JobHybridPy2.JobId
-    Start-Sleep -Seconds 600
-    $JobOutput = Get-AzAutomationJobOutput -Id $pythonRbJobId -Stream "Output" -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
-    if($JobOutput.Summary -like "SampleOutput") {
-        Write-Output "Hybrid job for Python runbook ran successfully and output stream is visible"
-    }    
-    $JobError = Get-AzAutomationJobOutput -Id $pythonRbJobId -Stream "Error" -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
-    if($JobError.Summary -like "Some Error") {
-        Write-Output "Error stream is visible"
-    }    
-    $JobWarning = Get-AzAutomationJobOutput -Id $pythonRbJobId -Stream "Warning" -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
-    if($JobWarning.Summary -like "Some Warning") {
-        Write-Output "Warning stream is visible"
-    } 
+    $JobHybridPy2 = Start-AzAutomationRunbook -AutomationAccountName $using:AccountName -Name $using:RunbookPython2Name  -ResourceGroupName $using:ResourceGroupName -RunOn $runOn 
+    Write-Output "Python Job : $JobHybridPy2"
+    $jobId = $JobHybridPy2.JobId
+    
+    Write-Output "Polling for job completion for job Id : $jobId"
+    $terminalStates = @("Completed", "Failed", "Stopped", "Suspended")
+    $retryCount = 1
+    while ($terminalStates -notcontains $jobDetails.Status -and $retryCount -le 6) {
+        Start-Sleep -s 20
+        $retryCount++
+        $jobDetails = Get-AzAutomationJob -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName -Id $jobId
+    }
+
+    $jobStatus = $jobDetails.Status
+
+    if($jobStatus -eq "Completed"){
+        $JobOutput = Get-AzAutomationJobOutput -Id $jobId -Stream "Output" -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
+        if($JobOutput.Summary -like "SampleOutput") {
+            Write-Output "Hybrid job for Python runbook ran successfully and output stream is visible"
+        }    
+        $JobError = Get-AzAutomationJobOutput -Id $jobId -Stream "Error" -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
+        if($JobError.Summary -like "Some Error") {
+            Write-Output "Error stream is visible"
+        }    
+        $JobWarning = Get-AzAutomationJobOutput -Id $jobId -Stream "Warning" -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
+        if($JobWarning.Summary -like "Some Warning") {
+            Write-Output "Warning stream is visible"
+        } 
+    }
+    else{
+        Write-Error "Python Runbook Job execution status after 10 minutes of waiting is $jobStatus"
+    }
 }
 
 function Start-PsJob {
@@ -90,20 +108,36 @@ function Start-PsJob {
         [string] $runOn = ""
     )
     
-    $JobCloudPS = Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name $RunbookPSName  -ResourceGroupName $ResourceGroupName -RunOn $runOn
-    $psRbJobId = $JobCloudPS.JobId
-    Start-Sleep -Seconds 600
-    $JobOutput = Get-AzAutomationJobOutput -Id $psRbJobId -Stream "Output" -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
-    if($JobOutput.Summary -like "SampleOutput") {
-        Write-Output "Hybrid job for PS runbook ran successfully and output stream is visible"
-    }    
-    $JobError = Get-AzAutomationJobOutput -Id $psRbJobId -Stream "Error" -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
-    if($JobError.Summary -like "SampleError") {
-        Write-Output "Error stream is visible"
-    }    
-    $JobWarning = Get-AzAutomationJobOutput -Id $psRbJobId -Stream "Warning" -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
-    if($JobWarning.Summary -like "SampleWarning") {
-        Write-Output "Warning stream is visible"
+    $JobCloudPS = Start-AzAutomationRunbook -AutomationAccountName $using:AccountName -Name $using:RunbookPSName  -ResourceGroupName $using:ResourceGroupName -RunOn $runOn
+    $jobId = $JobCloudPS.JobId
+    
+    $jobDetails = Get-AzAutomationJob -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName -Id $jobId
+    $terminalStates = @("Completed", "Failed", "Stopped", "Suspended")
+    $retryCount = 1
+    while ($terminalStates -notcontains $jobDetails.Status -and $retryCount -le 6) {
+        Start-Sleep -s 20
+        $retryCount++
+        $jobDetails = Get-AzAutomationJob -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName -Id $jobId
+    }
+    
+    $jobStatus = $jobDetails.Status
+
+    if($jobStatus -eq "Completed"){
+        $JobOutput = Get-AzAutomationJobOutput -Id $jobId -Stream "Output" -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
+        if($JobOutput.Summary -like "SampleOutput") {
+            Write-Output "Hybrid job for PS runbook ran successfully and output stream is visible"
+        }    
+        $JobError = Get-AzAutomationJobOutput -Id $jobId -Stream "Error" -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
+        if($JobError.Summary -like "SampleError") {
+            Write-Output "Error stream is visible"
+        }    
+        $JobWarning = Get-AzAutomationJobOutput -Id $jobId -Stream "Warning" -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
+        if($JobWarning.Summary -like "SampleWarning") {
+            Write-Output "Warning stream is visible"
+        }
+    }
+    else{
+        Write-Error "PS Runbook Job execution status after 10 minutes of waiting is $jobStatus"
     }
 }
 
@@ -112,10 +146,10 @@ function Start-PsWFJob {
         [Parameter(Mandatory = $false)]
         [string] $runOn = ""
     )
-    $JobCloudPSWF = Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name $RunbookPSWFName -ResourceGroupName $ResourceGroupName -RunOn $runOn
+    $JobCloudPSWF = Start-AzAutomationRunbook -AutomationAccountName $using:AccountName -Name $using:RunbookPSWFName -ResourceGroupName $using:ResourceGroupName -RunOn $runOn
     $pswfRbJobId = $JobCloudPSWF.JobId
     Start-Sleep -Seconds 400
-    $Job1 = Get-AzAutomationJob -Id $pswfRbJobId -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
+    $Job1 = Get-AzAutomationJob -Id $pswfRbJobId -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
     if($Job1.Status -like "Running") {
         Write-Output "Cloud job for PS WF runbook is running"
     }  
@@ -125,25 +159,25 @@ function Start-PsWFJob {
     }
 
     Write-Output "Suspending PSWF runbook"
-    Suspend-AzAutomationJob  -Id $pswfRbJobId -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
+    Suspend-AzAutomationJob  -Id $pswfRbJobId -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
     Start-Sleep -Seconds 30
-    $Job2 = Get-AzAutomationJob -Id $pswfRbJobId -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
+    $Job2 = Get-AzAutomationJob -Id $pswfRbJobId -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
     if($Job2.Status -like "Suspended") {
         Write-Output "Cloud job for PS WF runbook is suspended"
     } 
 
     Write-Output "Resuming PSWF runbook"
-    Resume-AzAutomationJob  -Id $pswfRbJobId -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
+    Resume-AzAutomationJob  -Id $pswfRbJobId -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
     Start-Sleep -Seconds 30
-    $Job3 = Get-AzAutomationJob -Id $pswfRbJobId -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
+    $Job3 = Get-AzAutomationJob -Id $pswfRbJobId -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
     if($Job3.Status -like "Running") {
         Write-Output "Cloud job for PS WF runbook has resumed running"
     } 
 
-    Write-Output "Stoppin PSWF runbook"
-    Stop-AzAutomationJob  -Id $pswfRbJobId -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
+    Write-Output "Stopping PSWF runbook"
+    Stop-AzAutomationJob  -Id $pswfRbJobId -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
     Start-Sleep -Seconds 30
-    $Job4 = Get-AzAutomationJob -Id $pswfRbJobId -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
+    $Job4 = Get-AzAutomationJob -Id $pswfRbJobId -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
     if($Job4.Status -like "Stopping" -or $Job4.Status -like "Stopped") {
         Write-Output "Cloud job for PS WF runbook is stopping"
     }     
@@ -154,34 +188,16 @@ function Start-AssetVerificationJob {
         [Parameter(Mandatory = $false)]
         [string] $runOn = ""
     )
-    Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name $AssetVerificationRunbookPSName  -ResourceGroupName $ResourceGroupName -Parameters $assetVerificationRunbookParams -RunOn $runOn
+    Start-AzAutomationRunbook -AutomationAccountName $using:AccountName -Name $using:AssetVerificationRunbookPSName  -ResourceGroupName $using:ResourceGroupName -Parameters $using:assetVerificationRunbookParams -RunOn $runOn  -MaxWaitSeconds 1200 -Wait
 }
 
-function Start-CloudJobs {
-    Write-Output "Starting Cloud Jobs..."
-    
-    Start-PythonJob
-    Start-PsJob
-    Start-PsWFJob
-    Start-AssetVerificationJob
-}
-
-function Start-HybridJobs {
-    Write-Output "Starting Hybrid Jobs..."
-    
-    #Start-PythonJob -runOn $workerGroupName
-    Start-PsJob -runOn $workerGroupName
-    Start-PsWFJob -runOn $workerGroupName
-    Start-AssetVerificationJob -runOn $workerGroupName
-}
+Connect-To-AzAccount
 
 parallel {
 
     sequence {
         ### Create an automation account
         Write-Output "Getting Automation Account....."
-        $guid_val = [guid]::NewGuid()
-        $WORKFLOW:guid = $guid_val.ToString()
         #$AccountName = $AccountName + $guid.ToString()
         
         # Write-Verbose "Create account" -verbose
@@ -239,6 +255,11 @@ parallel {
     sequence {
         ##Create an AZ VM  
         try{
+            
+        $vmNetworkName = "TestVnet" + $guid.SubString(0,4)
+        $subnetName = "TestSubnet"+ $guid.SubString(0,4)
+        $newtworkSG = "TestNetworkSecurityGroup" + $guid.SubString(0,4)
+        $ipAddressName = "TestPublicIpAddress" + $guid.SubString(0,4)
         $User = "TestVMUser"
         $Password = ConvertTo-SecureString "SecurePassword12345" -AsPlainText -Force
         $VMCredential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $User, $Password
@@ -246,10 +267,10 @@ parallel {
             -ResourceGroupName $ResourceGroupName `
             -Name $vmName `
             -Location $location `
-            -VirtualNetworkName "TestVnet123" `
-            -SubnetName "TestSubnet123" `
-            -SecurityGroupName "TestNetworkSecurityGroup123" `
-            -PublicIpAddressName "TestPublicIpAddress123" `
+            -VirtualNetworkName $vmNetworkName `
+            -SubnetName $subnetName `
+            -SecurityGroupName $newtworkSG `
+            -PublicIpAddressName $ipAddressName `
             -Credential $VMCredential
 
         Start-Sleep -s 120
@@ -262,7 +283,7 @@ parallel {
     }
 }
 
-# run az vm extesion
+#run az vm extesion
 sequence {
         
     ## Run AZ VM Extension to download and Install MMA Agent
@@ -299,7 +320,7 @@ sequence {
     #Create required assets
     try{
         $creationParams = @{"guid" = $guid; "ResourceGroupName"=$ResourceGroupName; "AccountName"= $AccountName }
-        Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name "Test-AutomationAssets-Creation" -Parameters $creationParams -ResourceGroupName $ResourceGroupName
+        Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name "Test-AutomationAssets-Creation" -Parameters $creationParams -ResourceGroupName $ResourceGroupName -MaxWaitSeconds 1800 -Wait
     }
     catch{
         Write-Error "Error creating assets..."
@@ -308,40 +329,49 @@ sequence {
 
 #Execute cloud and hybrid jobs
 sequence {
-    Start-CloudJobs
-    Start-HybridJobs
+    Write-Output "Starting Cloud Jobs..."
+    
+    Start-PythonJob 
+    Start-PsJob 
+    # Start-PsWFJob 
+    Start-AssetVerificationJob 
 }
 
-#Run a schedule
+sequence {
+    Write-Output "Starting Hybrid Jobs..."
+    
+    #Start-PythonJob -runOn $workerGroupName
+    Start-PsJob -runOn $workerGroupName
+    # Start-PsWFJob -runOn $workerGroupName
+    Start-AssetVerificationJob -runOn $workerGroupName
+}
+
+#Run Jobs using Schedules and Webhooks
 parallel {
     #Cloud
     sequence {
-        Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name "Test-Schedule"  -ResourceGroupName $ResourceGroupName
+        Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name "Test-Schedule"  -ResourceGroupName $ResourceGroupName -MaxWaitSeconds 900 -Wait
+    }
+    sequence {
+        Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name "Test-Webhook"  -ResourceGroupName $ResourceGroupName -MaxWaitSeconds 900 -Wait 
     }
     #hybrid
     sequence {
         $params = @{"WorkerGroup" = $workerGroupName}
-        Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name "Test-Schedule"  -ResourceGroupName $ResourceGroupName -Parameters $params
+        Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name "Test-Schedule"  -ResourceGroupName $ResourceGroupName -Parameters $params -MaxWaitSeconds 900 -Wait
+    }
+    sequence {
+        $params = @{"WorkerGroup" = $workerGroupName}
+        Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name "Test-Webhook"  -ResourceGroupName $ResourceGroupName -Parameters $params -MaxWaitSeconds 900 -Wait
     }
 }
 
-#Run a webhook
-sequence {
-    #Cloud
-    sequence {
-        Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name "Test-Webhook"  -ResourceGroupName $ResourceGroupName
-    }
-    #hybrid
-    sequence {
-        $params = @{"WorkerGroup" = $workerGroupName}
-        Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name "Test-Webhook"  -ResourceGroupName $ResourceGroupName -Parameters $params
-    }
-}
 
 # De register the HW
 sequence {
-    $params = @{"agentServiceEndpoint" = $WORKFLOW:agentEndpoint; "aaToken" = $WORKFLOW:aaPrimaryKey}
-    Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name $AssetVerificationRunbookPSName  -ResourceGroupName $ResourceGroupName -Parameters $assetVerificationRunbookParams -RunOn $WORKFLOW:workerGroupName
+    Start-Sleep -s 420
+    $deregisterParams = @{"agentServiceEndpoint" = $WORKFLOW:agentEndpoint; "aaToken" = $WORKFLOW:aaPrimaryKey}
+    Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name "DeregisterHW"  -ResourceGroupName $ResourceGroupName -Parameters $deregisterParams -RunOn $WORKFLOW:workerGroupName
 
     #verify if this account doesnt have any machines under this workergroup
     Start-Sleep -s 100

@@ -200,7 +200,7 @@ function CreateStringVariable {
     }
 
     [string] $StringVariableValue = "Test String Variable"
-    Set-AzAutomationVariable --Name $StringVariableName -Value $StringVariableValue -Encrypted $False -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
+    Set-AzAutomationVariable -Name $StringVariableName -Value $StringVariableValue -Encrypted $False -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
 
     Start-Sleep -s 60
     $TestStringVariable = Get-AzAutomationVariable -AutomationAccountName $AccountName -Name $StringVariableName -ResourceGroupName $ResourceGroupName
@@ -266,7 +266,10 @@ function CreateBoolVariable {
 function CreateDateTimeVariable {
     # DateTime variable
     #TODO: Fix this
-    [DateTime] $DateTimeVariableValue = ("Thursday, August 3, 2020 10:14:25 AM") | get-date -Format "yyyy-MM-ddTHH:mm:ssZ"
+
+    $date = '08/24/2020'
+    $DateTimeVariableValue = [Datetime]::ParseExact($date, 'MM/dd/yyyy', $null)
+
     New-AzAutomationVariable -Name $DateTimeVariableName -Value $DateTimeVariableValue -Encrypted $False -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
 
     Start-Sleep -s 60
@@ -326,10 +329,10 @@ function CreateEncryptedStringVariable {
     Start-Sleep -s 60
     $TestEncryptedVariable = Get-AzAutomationVariable -AutomationAccountName $AccountName -Name $EncryptedVariableName -ResourceGroupName $ResourceGroupName
     if($TestEncryptedVariable.Encrypted -eq $True) {
-        Write-Output "Encrypted variable creation successful"
+        Write-Output "Encrypted string variable creation successful"
     } 
     else{
-        Write-Error "Encrypted variable creation failed"
+        Write-Error "Encrypted string variable creation failed"
     }
 
     
@@ -339,10 +342,10 @@ function CreateEncryptedStringVariable {
     Start-Sleep -s 60
     $TestEncryptedVariable = Get-AzAutomationVariable -AutomationAccountName $AccountName -Name $EncryptedVariableName -ResourceGroupName $ResourceGroupName
     if($TestEncryptedVariable.Encrypted -eq $True) {
-        Write-Output "Encrypted variable update successful"
+        Write-Output "Encrypted string variable update successful"
     } 
     else{
-        Write-Error "Encrypted variable update failed"
+        Write-Error "Encrypted string variable update failed"
     }
 }
 
@@ -475,6 +478,8 @@ function CreateVariables {
 
 
 CreateVariables
+CreateConnection
+CreateCredential
 
 ############ Certificate ##################
 

@@ -49,20 +49,25 @@ def register_woker(options):
         time.sleep(time_to_wait)
         if(not os.path.isdir("/opt/microsoft/omsconfig/modules/nxOMSAutomationWorker/DSCResources/MSFT_nxOMSAutomationWorkerResource/automationworker")):
             print("Worker isnt downloaded yet....")
-        tries += 1
+            tries += 1
+        else:
+            worker_present = True
+            break
 
     if(worker_present):
-        cmdToRegisterUserHW = ["sudo python /opt/microsoft/omsconfig/modules/nxOMSAutomationWorker/DSCResources/MSFT_nxOMSAutomationWorkerResource/automationworker/scripts/onboarding.py --register -w "+str(workspaceId)+" -k "+str(automationSharedKey)+" -g "+str(hybridGroupName)+" -e " +str(automationEndpoint)]
+        cmdToRegisterUserHW = ["sudo", "python", "/opt/microsoft/omsconfig/modules/nxOMSAutomationWorker/DSCResources/MSFT_nxOMSAutomationWorkerResource/automationworker/scripts/onboarding.py", "--register", "-w", workspaceId,"-k", automationSharedKey, "-g",hybridGroupName,"-e", automationEndpoint]
 
-        run_command(cmdToRegisterUserHW)
+        returncode, _, stderr = run_command(cmdToRegisterUserHW)
+        if(returncode == 0):
+            cmdToTurnOffSignValidation = ["sudo", "python","/opt/microsoft/omsconfig/modules/nxOMSAutomationWorker/DSCResources/MSFT_nxOMSAutomationWorkerResource/automationworker/scripts/require_runbook_signature.py", "--false", workspaceId]
 
-        cmdToTurnOffSignValidation = ["sudo python /opt/microsoft/omsconfig/modules/nxOMSAutomationWorker/DSCResources/MSFT_nxOMSAutomationWorkerResource/automationworker/scripts/require_runbook_signature.py --false "+ str(workspaceId)]
-
-        returncode, _, stderr = run_command(cmdToTurnOffSignValidation)
-        if(returncode != 0):
-            print("Registration failed because of "+str(stderr))
-            return
-        print("Successfully registerd worker.")
+            returncode, _, stderr = run_command(cmdToTurnOffSignValidation)
+            if(returncode != 0):
+                print("Registration failed because of "+str(stderr))
+                return
+            print("Successfully registerd worker.")
+        else:
+            print("registration failed because of " + str(stderr))
     else:
         print("Worker download failing...")
 
