@@ -72,14 +72,14 @@ function Start-PythonJob {
     Start-Sleep -Seconds 600
     $JobOutput = Get-AzAutomationJobOutput -Id $pythonRbJobId -Stream "Output" -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
     if($JobOutput.Summary -like "SampleOutput") {
-        Write-Output "Hybrid job for PS runbook ran successfully and output stream is visible"
+        Write-Output "Hybrid job for Python runbook ran successfully and output stream is visible"
     }    
     $JobError = Get-AzAutomationJobOutput -Id $pythonRbJobId -Stream "Error" -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
-    if($JobError.Summary -like "SampleError") {
+    if($JobError.Summary -like "Some Error") {
         Write-Output "Error stream is visible"
     }    
     $JobWarning = Get-AzAutomationJobOutput -Id $pythonRbJobId -Stream "Warning" -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
-    if($JobWarning.Summary -like "SampleWarning") {
+    if($JobWarning.Summary -like "Some Warning") {
         Write-Output "Warning stream is visible"
     } 
 }
@@ -169,7 +169,7 @@ function Start-CloudJobs {
 function Start-HybridJobs {
     Write-Output "Starting Hybrid Jobs..."
     
-    Start-PythonJob -runOn $workerGroupName
+    #Start-PythonJob -runOn $workerGroupName
     Start-PsJob -runOn $workerGroupName
     Start-PsWFJob -runOn $workerGroupName
     Start-AssetVerificationJob -runOn $workerGroupName
@@ -179,7 +179,7 @@ parallel {
 
     sequence {
         ### Create an automation account
-        Write-Output "Creating Automation Account....."
+        Write-Output "Getting Automation Account....."
         $guid_val = [guid]::NewGuid()
         $WORKFLOW:guid = $guid_val.ToString()
         #$AccountName = $AccountName + $guid.ToString()
@@ -299,7 +299,7 @@ sequence {
     #Create required assets
     try{
         $creationParams = @{"guid" = $guid; "ResourceGroupName"=$ResourceGroupName; "AccountName"= $AccountName }
-        Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name "Test-AA-Creation" -Parameters $creationParams -ResourceGroupName $ResourceGroupName
+        Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name "Test-AutomationAssets-Creation" -Parameters $creationParams -ResourceGroupName $ResourceGroupName
     }
     catch{
         Write-Error "Error creating assets..."
@@ -338,42 +338,27 @@ sequence {
     }
 }
 
-# run az vm extesion to de register the HW
+# De register the HW
 sequence {
-        
-    ## Run AZ VM Extension to download and Install MMA Agent
-    $commandToExecute = "powershell .\RemoveHybridworker.ps1 -agentServiceEndpoint $WORKFLOW:agentEndpoint -aaToken $WORKFLOW:aaPrimaryKey"
+    $params = @{"agentServiceEndpoint" = $WORKFLOW:agentEndpoint; "aaToken" = $WORKFLOW:aaPrimaryKey}
+    Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name $AssetVerificationRunbookPSName  -ResourceGroupName $ResourceGroupName -Parameters $assetVerificationRunbookParams -RunOn $WORKFLOW:workerGroupName
 
-    $settings = @{"fileUris" =  @("https://raw.githubusercontent.com/krmanupa/AutoRegisterHW/master/VMExtensionScripts/RemoveHybridworker.ps1"); "commandToExecute" = $commandToExecute};
-    $protectedSettings = @{"storageAccountName" = ""; "storageAccountKey" = ""};
-
-    # Run Az VM Extension to download and register worker.
-    Write-Output "Running Az VM Extension to De-Register the worker...."
-    Write-Output "Command executing ... $commandToExecute"
-    try {
-        Set-AzVMExtension -ResourceGroupName $ResourceGroupName `
-        -Location $location `
-            -VMName $vmName `
-            -Name "Remove-HybridWorker" `
-            -Publisher "Microsoft.Compute" `
-            -ExtensionType "CustomScriptExtension" `
-            -TypeHandlerVersion "1.10" `
-            -Settings $settings `
-            -ProtectedSettings $protectedSettings
-
+    #verify if this account doesnt have any machines under this workergroup
+    Start-Sleep -s 100
+    $workers = Get-AzAutomationHybridWorkerGroup -ResourceGroupName ResourceGroupName -AutomationAccountName $AccountName -Name $WORKFLOW:workerGroupName
+    if($null -eq $workers){
+        Write-Output "Worker Deregistered Successfully"
     }
-    catch {
-        Write-Error "Error running VM extension to De-Register Hybrid Worker"
-        Write-Error -Message $_.Exception
-        throw $_.Exception
+    else{
+        Write-Error "Worker Deregistration failed..."
     }
+
+    #TODO: Delete the HWG cmdlet also
 }
 
 #Delete all the resources
 sequence {
     #Remove-AzVm -ResourceGroupName $ResourceGroupName -Name $vmName -Force
     #Remove-AzOperationalInsightsWorkspace -ResourceGroupName $ResourceGroupName -Name $WorkspaceName -Force
-    #Remove-AzAutomationAccount -Name $AccountName -ResourceGroupName $ResourceGroupName -Force
 }
-
 }

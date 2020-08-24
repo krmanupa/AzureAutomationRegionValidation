@@ -69,7 +69,7 @@ function Start-AccountSpecificRunbook {
     [Parameter(Mandatory = $true)]
     [string] $accName
     )
-    Start-AzAutomationRunbook -Name "Test-creation" -ResourceGroupName $resourceGroupName -AutomationAccountName $accName
+    Start-AzAutomationRunbook -Name "Test-AutomationAccount-Creation" -ResourceGroupName $resourceGroupName -AutomationAccountName $accName
 }
 
 function Start-DSCSpecificRunbook {
@@ -81,6 +81,39 @@ function Start-DSCSpecificRunbook {
     [string] $accName
     )
     Start-AzAutomationRunbook -Name "Test-dsc" -ResourceGroupName RunnerRG -AutomationAccountName $accName
+}
+
+function Start-SourceControl {
+    Param(
+    # ResourceGroup Name
+    [Parameter(Mandatory = $true)]
+    [string] $resourceGroupName,
+    [Parameter(Mandatory = $true)]
+    [string] $accName
+    )
+    Start-AzAutomationRunbook -Name "Test-SourceControl" -ResourceGroupName RunnerRG -AutomationAccountName $accName
+}
+
+function Start-Webhook {
+    Param(
+    # ResourceGroup Name
+    [Parameter(Mandatory = $true)]
+    [string] $resourceGroupName,
+    [Parameter(Mandatory = $true)]
+    [string] $accName
+    )
+    Start-AzAutomationRunbook -Name "Test-Webhook" -ResourceGroupName RunnerRG -AutomationAccountName $accName
+}
+
+function Start-Schedule {
+    Param(
+    # ResourceGroup Name
+    [Parameter(Mandatory = $true)]
+    [string] $resourceGroupName,
+    [Parameter(Mandatory = $true)]
+    [string] $accName
+    )
+    Start-AzAutomationRunbook -Name "Test-Schedule" -ResourceGroupName RunnerRG -AutomationAccountName $accName
 }
 
 }

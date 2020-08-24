@@ -78,7 +78,8 @@ function VerifyStringVariable {
     ### Set and Test Unencrypted variable
     $updatedStringVarValue = "Updated String Variable Value"
     Set-AutomationVariable -Name $StringVariableName -Value $updatedStringVarValue
-    Start-Sleep -s 120
+    # We need to sleep to allow the replicas to sync
+    Start-Sleep -s 60
 
     $actualOutput = Get-AutomationVariable -Name $StringVariableName
     if($actualOutput -like $updatedStringVarValue) {
@@ -88,6 +89,7 @@ function VerifyStringVariable {
         Write-Error "Get UnEncrypted variable Failed - String"
     } 
     Set-AutomationVariable -Name $StringVariableName -Value $expectedStringVariableValueUnEn
+    Start-Sleep -s 60
 }
 function VerifyIntVariable {
     ###Int variable
@@ -320,7 +322,7 @@ function VerifyCredential {
     }
 }
 
-function VerifyConnecion {
+function VerifyConnection {
     ### verify connections
     $actualConnection = Get-AutomationConnection -Name $AzureConnectionName
     if($actualConnection.AzureCertificateName -like $expectedFieldValuesAzureConnection.AzureCertificateName){
@@ -351,17 +353,18 @@ function VerifyVariables {
     VerifyStringVariable
     VerifyIntVariable
     VerifyBoolVariable
-    VerifyDateTimeVariable
+    #VerifyDateTimeVariable
     VerifyUnspecifiedVariable
 
     VerifyEncryptedVariable
     VerifyEncryptedIntVariable
     VerifyEncryptedBoolVariable
-    VerifyEncryptedDateTimeVariable
+    #VerifyEncryptedDateTimeVariable
     VerifyEncryptedUnspecifiedVariable
 }
 
+# TODO : Verify certificate and modules
 VerifyVariables
-VerifyConnecion
+VerifyConnection
 VerifyCredential
 
