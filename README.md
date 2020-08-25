@@ -1,11 +1,5 @@
 # AzureAutomation Region Validation
-Pending Tasks:
-1. Poll the job status for checking job completion - Done
-2. Linux Hybrid scenario - Done
-3. DSC Linux - Done
-4. DateTime variable -Pending, Ayush and  Certificate asset - Done
-5. Deregister HW - Done
-6. Webhook, Schedules, Asset Creation, Asset Verification  - One output for the runbook (Improve logs)
-7. Automation Assets - Donot trigger verification if creation fails - Done
-8. CMK - Done
-9. Child runbook trigger test - Done
+1. BaseRunbooks contains runbooks to trigger verification of different Use Cases for any new region validation
+2. UtilityRunbooks contains runbooks to verify scripts execution on Automation Account
+3. ValidationRunbooks contains runbooks to verify various Use Cases.
+4. VMExtensionScripts contains scripts to be executed on the newly created VMs for Hybrid worker Scenarios.
