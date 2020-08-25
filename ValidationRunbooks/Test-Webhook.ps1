@@ -47,16 +47,16 @@ Param(
     }
     }
     
-    # Write-Output "Create webhook" 
+    # Write-Verbose "Create webhook" 
     $Webhook = New-AzAutomationWebhook -Name $WebhookName -IsEnabled $True -ExpiryTime $([datetime]::now.AddYears(1)) -RunbookName $RunbookName -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountName -Force -RunOn $WorkerGroup
     if($Webhook.Name -like $WebhookName) {
-        Write-Output "Webhook created successfully"
+        Write-Verbose "Webhook created successfully"
     } 
     else{
         Write-Error "Webhook creation failed"
     }
     
-    # Write-Output "Invoke webhook" 
+    # Write-Verbose "Invoke webhook" 
     try{
         $JobDetails = Invoke-WebRequest $Webhook.WebhookURI -Method Post -UseBasicParsing
         $Job = $JobDetails.Content | ConvertFrom-Json
@@ -65,7 +65,7 @@ Param(
         $JobOutput = Get-AzAutomationJobOutput -AutomationAccountName $AccountName -Id $JobId -ResourceGroupName $ResourceGroupName -Stream "Output"
         $Output = $JobOutput.Summary
         if($Output -like "Hello") { 
-            Write-Output "Webhook invoked successfully" 
+            Write-Verbose "Webhook invoked successfully" 
         } 
         else{
             Write-Error "Job invoked through webhook couldn't complete"
@@ -79,7 +79,7 @@ Param(
     #Try getting the webhook 
     $Webhook = Get-AzAutomationWebhook -RunbookName $RunbookName -ResourceGroup $ResourceGroupName -AutomationAccountName $AccountName
     if($Webhook.Name -like $WebhookName) {
-        Write-Output "Webhook Get successful"
+        Write-Verbose "Webhook Get successful"
     } 
     else{
         Write-Error "Webhook Get failed"
@@ -90,14 +90,15 @@ Param(
     #check if the webhook is disabled
     $Webhook = Get-AzAutomationWebhook -RunbookName $RunbookName -ResourceGroup $ResourceGroupName -AutomationAccountName $AccountName
     if($Webhook.IsEnabled -eq $false) {
-        Write-Output "Webhook updated successfully"
+        Write-Verbose "Webhook updated successfully"
     } 
     else{
         Write-Error "Webhook update failed"
     }
     
-    # Write-Output "Delete webhook" 
+    # Write-Verbose "Delete webhook" 
     Remove-AzAutomationWebhook -Name $WebhookName -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountName 
     
+    Write-Output "Webhook Scenario Verified"
     
     

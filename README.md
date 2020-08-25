@@ -7,5 +7,5 @@ Pending Tasks:
 5. Deregister HW - Done
 6. Webhook, Schedules, Asset Creation, Asset Verification  - One output for the runbook (Improve logs)
 7. Automation Assets - Donot trigger verification if creation fails - Done
-8. CMK - Pending
+8. CMK - Done
 9. Child runbook trigger test - Done

@@ -73,10 +73,10 @@ function Start-PythonJob {
     )
     # Python2
     $JobHybridPy2 = Start-AzAutomationRunbook -AutomationAccountName $using:AccountName -Name $using:RunbookPython2Name  -ResourceGroupName $using:ResourceGroupName -RunOn $runOn 
-    Write-Output "Python Job : $JobHybridPy2"
+    Write-Verbose "Python Job : $JobHybridPy2"
     $jobId = $JobHybridPy2.JobId
     
-    Write-Output "Polling for job completion for job Id : $jobId"
+    Write-Verbose "Polling for job completion for job Id : $jobId"
     $terminalStates = @("Completed", "Failed", "Stopped", "Suspended")
     $retryCount = 1
     while ($terminalStates -notcontains $jobDetails.Status -and $retryCount -le 6) {
@@ -90,15 +90,15 @@ function Start-PythonJob {
     if($jobStatus -eq "Completed"){
         $JobOutput = Get-AzAutomationJobOutput -Id $jobId -Stream "Output" -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
         if($JobOutput.Summary -like "SampleOutput") {
-            Write-Output "Hybrid job for Python runbook ran successfully and output stream is visible"
+            Write-Verbose "Hybrid job for Python runbook ran successfully and output stream is visible"
         }    
         $JobError = Get-AzAutomationJobOutput -Id $jobId -Stream "Error" -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
         if($JobError.Summary -like "Some Error") {
-            Write-Output "Error stream is visible"
+            Write-Verbose "Error stream is visible"
         }    
         $JobWarning = Get-AzAutomationJobOutput -Id $jobId -Stream "Warning" -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
         if($JobWarning.Summary -like "Some Warning") {
-            Write-Output "Warning stream is visible"
+            Write-Verbose "Warning stream is visible"
         } 
     }
     else{
@@ -129,15 +129,15 @@ function Start-PsJob {
     if($jobStatus -eq "Completed"){
         $JobOutput = Get-AzAutomationJobOutput -Id $jobId -Stream "Output" -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
         if($JobOutput.Summary -like "SampleOutput") {
-            Write-Output "Job for PS runbook ran successfully on $runOn and output stream is visible"
+            Write-Verbose "Job for PS runbook ran successfully on $runOn and output stream is visible"
         }    
         $JobError = Get-AzAutomationJobOutput -Id $jobId -Stream "Error" -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
         if($JobError.Summary -like "SampleError") {
-            Write-Output "Job for PS runbook ran successfully on $runOn and Error stream is visible"
+            Write-Verbose "Job for PS runbook ran successfully on $runOn and Error stream is visible"
         }    
         $JobWarning = Get-AzAutomationJobOutput -Id $jobId -Stream "Warning" -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
         if($JobWarning.Summary -like "SampleWarning") {
-            Write-Output "Job for PS runbook ran successfully on $runOn and Warning stream is visible"
+            Write-Verbose "Job for PS runbook ran successfully on $runOn and Warning stream is visible"
         }
     }
     else{
@@ -167,7 +167,7 @@ function Start-ChildJobTriggeringRunbook {
     $jobStatus = $jobDetails.Status
 
     if($jobStatus -eq "Completed"){
-        Write-Output "Job for PS runbook to tirgger Child runbook ran successfully on $runOn and output stream is visible"
+        Write-Verbose "Job for PS runbook to tirgger Child runbook ran successfully on $runOn and output stream is visible"
     }
     else{
         Write-Error "PS Runbook Job execution status after 10 minutes of waiting is $jobStatus"
@@ -184,35 +184,35 @@ function Start-PsWFJob {
     Start-Sleep -Seconds 400
     $Job1 = Get-AzAutomationJob -Id $pswfRbJobId -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
     if($Job1.Status -like "Running") {
-        Write-Output "Cloud job for PS WF runbook is running"
+        Write-Verbose "Cloud job for PS WF runbook is running"
     }  
     elseif($Job1.Status -like "Queued") {
         Write-Warning "Cloud job for PS WF runbook didn't start in 5 mins"
         Start-Sleep -Seconds 100
     }
 
-    Write-Output "Suspending PSWF runbook"
+    Write-Verbose "Suspending PSWF runbook"
     Suspend-AzAutomationJob  -Id $pswfRbJobId -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
     Start-Sleep -Seconds 30
     $Job2 = Get-AzAutomationJob -Id $pswfRbJobId -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
     if($Job2.Status -like "Suspended") {
-        Write-Output "Cloud job for PS WF runbook is suspended"
+        Write-Verbose "Cloud job for PS WF runbook is suspended"
     } 
 
-    Write-Output "Resuming PSWF runbook"
+    Write-Verbose "Resuming PSWF runbook"
     Resume-AzAutomationJob  -Id $pswfRbJobId -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
     Start-Sleep -Seconds 30
     $Job3 = Get-AzAutomationJob -Id $pswfRbJobId -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
     if($Job3.Status -like "Running") {
-        Write-Output "Cloud job for PS WF runbook has resumed running"
+        Write-Verbose "Cloud job for PS WF runbook has resumed running"
     } 
 
-    Write-Output "Stopping PSWF runbook"
+    Write-Verbose "Stopping PSWF runbook"
     Stop-AzAutomationJob  -Id $pswfRbJobId -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
     Start-Sleep -Seconds 30
     $Job4 = Get-AzAutomationJob -Id $pswfRbJobId -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
     if($Job4.Status -like "Stopping" -or $Job4.Status -like "Stopped") {
-        Write-Output "Cloud job for PS WF runbook is stopping"
+        Write-Verbose "Cloud job for PS WF runbook is stopping"
     }     
 }
 
@@ -233,19 +233,19 @@ parallel {
 
     sequence {
         ### Create an automation account
-        Write-Output "Getting Automation Account....."
+        Write-Verbose "Getting Automation Account....."
         #$AccountName = $AccountName + $guid.ToString()
         
         # Write-Verbose "Create account" -verbose
         try {
             $Account = Get-AzAutomationAccount -Name $AccountName -ResourceGroupName $ResourceGroupName 
             if($Account.AutomationAccountName -like $AccountName) {
-                Write-Output "Account retrieved successfully"
+                Write-Verbose "Account retrieved successfully"
                 $accRegInfo = Get-AzAutomationRegistrationInfo -ResourceGroup $ResourceGroupName -AutomationAccountName  $AccountName
                 $WORKFLOW:agentEndpoint = $accRegInfo.Endpoint
                 $WORKFLOW:aaPrimaryKey = $accRegInfo.PrimaryKey
 
-                Write-Output "AgentService endpoint: $agentEndpoint  Primary key : $aaPrimaryKey"
+                Write-Verbose "AgentService endpoint: $agentEndpoint  Primary key : $aaPrimaryKey"
             } 
             else{
                 Write-Error "Account retrieval failed"
@@ -259,19 +259,19 @@ parallel {
     }
 
     sequence {
-        Write-Output "Creating LA Workspace...."
+        Write-Verbose "Creating LA Workspace...."
         ### Create an LA workspace
         $workspace_guid = [guid]::NewGuid()
         $WorkspaceName = $WorkspaceName + $workspace_guid.ToString()
 
         # Create a new Log Analytics workspace if needed
         try {
-            Write-Output "Creating new workspace named $WorkspaceName in region $Location..."
+            Write-Verbose "Creating new workspace named $WorkspaceName in region $Location..."
             $Workspace = New-AzOperationalInsightsWorkspace -Location $Location -Name $WorkspaceName -Sku Standard -ResourceGroupName $ResourceGroupName
-            Write-Output $workspace
+            Write-Verbose $workspace
             Start-Sleep -s 60
 
-            Write-Output "Enabling Automation for the created workspace...."
+            Write-Verbose "Enabling Automation for the created workspace...."
             Set-AzOperationalInsightsIntelligencePack -ResourceGroupName $ResourceGroupName -WorkspaceName $WorkspaceName -IntelligencePackName "AzureAutomation" -Enabled $true
 
             $workspaceDetails = Get-AzOperationalInsightsWorkspace -ResourceGroupName $ResourceGroupName -Name $WorkspaceName
@@ -280,7 +280,7 @@ parallel {
             $workspaceSharedKey = Get-AzOperationalInsightsWorkspaceSharedKey -ResourceGroupName $ResourceGroupName -Name $WorkspaceName
             $WORKFLOW:workspacePrimaryKey = $workspaceSharedKey.PrimarySharedKey
 
-            Write-Output "Workspace Details to be used to register machine are WorkspaceId : $workspaceId and WorkspaceKey : $workspacePrimaryKey"
+            Write-Verbose "Workspace Details to be used to register machine are WorkspaceId : $workspaceId and WorkspaceKey : $workspacePrimaryKey"
         } catch {
             Write-Verbose "Error creating LA workspace"
             Write-Error -Message $_.Exception
@@ -330,8 +330,8 @@ sequence {
     $protectedSettings = @{"storageAccountName" = ""; "storageAccountKey" = ""};
 
     # Run Az VM Extension to download and register worker.
-    Write-Output "Running Az VM Extension...."
-    Write-Output "Command executing ... $commandToExecute"
+    Write-Verbose "Running Az VM Extension...."
+    Write-Verbose "Command executing ... $commandToExecute"
     try {
         Set-AzVMExtension -ResourceGroupName $ResourceGroupName `
         -Location $location `
@@ -369,7 +369,7 @@ sequence {
 
 #Execute cloud and hybrid jobs
 sequence {
-    Write-Output "Starting Cloud Jobs..."
+    Write-Verbose "Starting Cloud Jobs..."
     
     Start-PythonJob 
     Start-PsJob 
@@ -379,7 +379,7 @@ sequence {
 }
 
 sequence {
-    Write-Output "Starting Hybrid Jobs..."
+    Write-Verbose "Starting Hybrid Jobs..."
     
     #Start-PythonJob -runOn $workerGroupName
     Start-PsJob -runOn $workerGroupName
@@ -388,23 +388,73 @@ sequence {
     Start-AssetVerificationJob -runOn $workerGroupName
 }
 
+#Test CMK
+sequence {
+    #Enable CMK 
+    $creationParams = @{$Environment = $Environment;"ResourceGroupName"=$ResourceGroupName; "AccountName"= $AccountName}
+    $jobOutput = Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name "Test-CMK" -Parameters $creationParams -ResourceGroupName $ResourceGroupName -MaxWaitSeconds 1800 -Wait
+
+    if($jobOutput -eq "Enabled CMK"){
+        Start-AssetVerificationJob
+        Start-AssetVerificationJob -runOn $workerGroupName
+    }
+
+    #Disable CMK 
+    $creationParams = @{$Environment = $Environment;"ResourceGroupName"=$ResourceGroupName; "AccountName"= $AccountName; "IsEnableCMK" = $false}
+    $jobOutput = Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name "Test-CMK" -Parameters $creationParams -ResourceGroupName $ResourceGroupName -MaxWaitSeconds 1800 -Wait
+
+    if($jobOutput -eq "Disabled CMK"){
+        Start-AssetVerificationJob
+        Start-AssetVerificationJob -runOn $workerGroupName
+    }
+}
+
+
 #Run Jobs using Schedules and Webhooks
 parallel {
     #Cloud
     sequence {
-        Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name "Test-Schedule"  -ResourceGroupName $ResourceGroupName -MaxWaitSeconds 900 -Wait
+        $scheduleJobOutput = Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name "Test-Schedule"  -ResourceGroupName $ResourceGroupName -MaxWaitSeconds 900 -Wait
+        if($scheduleJobOutput -eq "Schedule Scenario Verified"){
+            Write-Verbose "Cloud job Schedule Scenario Verified"
+        }
+        else{
+            Write-Error "Cloud job Schedule Scenario failed"
+        }
     }
     sequence {
-        Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name "Test-Webhook"  -ResourceGroupName $ResourceGroupName -MaxWaitSeconds 900 -Wait 
+        $webhookJobOutput = Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name "Test-Webhook"  -ResourceGroupName $ResourceGroupName -MaxWaitSeconds 900 -Wait
+        
+        if($webhookJobOutput -eq "Webhook Scenario Verified"){
+            Write-Verbose "Cloud Webhook Scenario Verified"
+        }
+        else{
+            Write-Error "Cloud Webhook Scenario failed"
+        }
+        
     }
     #hybrid
     sequence {
         $params = @{"WorkerGroup" = $workerGroupName}
-        Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name "Test-Schedule"  -ResourceGroupName $ResourceGroupName -Parameters $params -MaxWaitSeconds 900 -Wait
+        $scheduleJobOutput = Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name "Test-Schedule"  -ResourceGroupName $ResourceGroupName -Parameters $params -MaxWaitSeconds 900 -Wait
+        
+        if($scheduleJobOutput -eq "Schedule Scenario Verified"){
+            Write-Verbose "Schedule Scenario Verified"
+        }
+        else{
+            Write-Error "Schedule Scenario Verified"
+        }
     }
     sequence {
         $params = @{"WorkerGroup" = $workerGroupName}
-        Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name "Test-Webhook"  -ResourceGroupName $ResourceGroupName -Parameters $params -MaxWaitSeconds 900 -Wait
+        $webhookJobOutput = Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name "Test-Webhook"  -ResourceGroupName $ResourceGroupName -Parameters $params -MaxWaitSeconds 900 -Wait
+
+        if($webhookJobOutput -eq "Webhook Scenario Verified"){
+            Write-Verbose "Hybrid Webhook Scenario Verified"
+        }
+        else{
+            Write-Error "Hybrid Webhook Scenario failed"
+        }
     }
 }
 
@@ -422,4 +472,5 @@ sequence {
     #Remove-AzVm -ResourceGroupName $ResourceGroupName -Name $vmName -Force
     #Remove-AzOperationalInsightsWorkspace -ResourceGroupName $ResourceGroupName -Name $WorkspaceName -Force
 }
+
 }

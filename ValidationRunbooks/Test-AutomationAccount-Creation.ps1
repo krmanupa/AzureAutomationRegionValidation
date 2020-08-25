@@ -22,6 +22,8 @@ Param(
 #Import-Module Az.Resources
 #Import-Module Az.Automation
 
+$ErrorActionPreference = "Stop"
+
 $guid = New-Guid
 $AccountName = $AccountName + $guid.ToString()
 
@@ -52,7 +54,7 @@ catch {
     # Write-Verbose "Create account" -verbose
     $Account = New-AzAutomationAccount -Name $AccountName -Location $location -ResourceGroupName $ResourceGroupName -Plan "Free"
     if($Account.AutomationAccountName -like $AccountName) {
-        Write-Output "Account created successfully"
+        Write-Verbose "Account created successfully"
     } 
     else{
         Write-Error "Account creation failed"
@@ -73,7 +75,7 @@ catch {
         $Headers = @{}
         $Headers.Add("Authorization","bearer "+ " " + "$($Token.AccessToken)")
         $contentType3 = "application/text"
-        $bodyPS = 'Write-Output "Hello" '        
+        $bodyPS = 'Write-Verbose "Hello" '        
         $PutContentPSUri = "$UriStart/resourceGroups/$ResourceGroupName/providers/Microsoft.Automation/automationAccounts/$AccountName/runbooks/$RunbookName/draft/content?api-version=2015-10-31"
         Invoke-RestMethod -Uri $PutContentPSUri -Method Put -ContentType $contentType3 -Headers $Headers -Body $bodyPS
         $bodyPy2 = 'print "Hello" '        
@@ -91,14 +93,14 @@ catch {
     # Write-Verbose "Start cloud jobs" -verbose
     $JobCloud = Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name $RunbookName -ResourceGroupName $ResourceGroupName -MaxWaitSeconds 300 -Wait
     if($JobCloud -like "Hello") {
-        Write-Output "Cloud job for PowerShell runbook ran successfully"
+        Write-Verbose "Cloud job for PowerShell runbook ran successfully"
     }
     else{
         Write-Error "Job for the PowerShell runbook couldn't complete"
     }
     $JobCloud = Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name $RunbookPython2Name -ResourceGroupName $ResourceGroupName -MaxWaitSeconds 300 -Wait
     if($JobCloud -like "Hello") {
-        Write-Output "Cloud job for Python2 runbook ran successfully"
+        Write-Verbose "Cloud job for Python2 runbook ran successfully"
     }
     else{
         Write-Error "Job for the Python2 runbook couldn't complete"
@@ -113,7 +115,7 @@ catch {
     Move-AzResource -ResourceId $AutomationAccount.ResourceId -DestinationResourceGroupName $NewResourceGroupName -Force
     $Account1 = Get-AzAutomationAccount -Name $AccountName -ResourceGroupName $NewResourceGroupName 
     if($Account1.AutomationAccountName -like $AccountName) {
-        Write-Output "Account moved to new resource group successfully"
+        Write-Verbose "Account moved to new resource group successfully"
     } 
     else{
         Write-Error "Account move operation failed"
@@ -121,6 +123,8 @@ catch {
 
     # Write-Verbose "Delete account" -verbose
     Remove-AzAutomationAccount -Name $AccountName -ResourceGroupName $NewResourceGroupName -Force
+
+    Write-Output "Automation Account Operations Verified"
 
 
 

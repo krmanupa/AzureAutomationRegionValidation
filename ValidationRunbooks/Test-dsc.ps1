@@ -12,6 +12,7 @@ Param(
     [Parameter(Mandatory = $false)]
     [string] $ResourceGroupName = "RunnerRG"
 )
+$ErrorActionPreference = "Stop"
 
 # Connect using RunAs account connection
 $connectionName = "AzureRunAsConnection"
@@ -100,7 +101,7 @@ Write-Verbose "Register DSC node" -verbose
 Register-AzAutomationDscNode -AutomationAccountName $AccountDscName -AzureVMName $VMDscName -ResourceGroupName $ResourceGroupName -NodeConfigurationName "SetupServer.localhost"
 $Node = Get-AzAutomationDscNode -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountDscName -ConfigurationName "SetupServer.localhost"
 if($Node.Name -like $VMDscName) {
-    Write-Output "Node registered successfully"
+    Write-Verbose "Node registered successfully"
 } 
 else{
     Write-Error "Node registration failed"
@@ -112,7 +113,7 @@ Write-Verbose "Get node report" -verbose
 $NodeReport = Get-AzAutomationDscNodeReport -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountDscName -NodeId $Node.Id -Latest
 $NodeReport.Status -like "Compliant"
 if($NodeReport.Status -like "Compliant") {
-    Write-Output "Node status compliant"
+    Write-Verbose "Node status compliant"
 } 
 else{
     Write-Error "Node not in compliant state"
@@ -129,5 +130,8 @@ Remove-AzAutomationDscNodeConfiguration -ResourceGroupName $ResourceGroupName -A
 
 Write-Verbose "Remove configuration" -verbose
 Remove-AzAutomationDscConfiguration -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountDscName -Name "SetupServer" -Force
+
+
+Write-Output "DSC Scenarios Verified"
 
 
