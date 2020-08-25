@@ -13,6 +13,8 @@ workflow Test-JobSpecific {
         [Parameter(Mandatory = $false)]
         [string] $RunbookPSName = "ps-job-test",
         [Parameter(Mandatory = $false)]
+        [string] $ChildJobTriggeringRunbookName = "TriggerChildRunbook",
+        [Parameter(Mandatory = $false)]
         [string] $RunbookPSWFName = "psWF-job-test",
         [Parameter(Mandatory = $false)]
         [string] $RunbookPython2Name = "py2-job-test",
@@ -31,6 +33,8 @@ $guid = $guid_val.ToString()
 
 $vmName = "Test-VM-" + $guid.SubString(0,4) 
 $assetVerificationRunbookParams = @{"guid" = $guid}
+$assetCreationSucceeded = $false
+
 
 function Connect-To-AzAccount{
     Param(
@@ -125,16 +129,45 @@ function Start-PsJob {
     if($jobStatus -eq "Completed"){
         $JobOutput = Get-AzAutomationJobOutput -Id $jobId -Stream "Output" -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
         if($JobOutput.Summary -like "SampleOutput") {
-            Write-Output "Hybrid job for PS runbook ran successfully and output stream is visible"
+            Write-Output "Job for PS runbook ran successfully on $runOn and output stream is visible"
         }    
         $JobError = Get-AzAutomationJobOutput -Id $jobId -Stream "Error" -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
         if($JobError.Summary -like "SampleError") {
-            Write-Output "Error stream is visible"
+            Write-Output "Job for PS runbook ran successfully on $runOn and Error stream is visible"
         }    
         $JobWarning = Get-AzAutomationJobOutput -Id $jobId -Stream "Warning" -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
         if($JobWarning.Summary -like "SampleWarning") {
-            Write-Output "Warning stream is visible"
+            Write-Output "Job for PS runbook ran successfully on $runOn and Warning stream is visible"
         }
+    }
+    else{
+        Write-Error "PS Runbook Job execution status after 10 minutes of waiting is $jobStatus"
+    }
+}
+
+function Start-ChildJobTriggeringRunbook {
+    Param(
+        [Parameter(Mandatory = $false)]
+        [string] $runOn = ""
+    )
+    
+    $params = @{"AccountName" = $using:AccountName ; "ResourceGroupName" = $using:ResourceGroupName}
+    $JobCloudPS = Start-AzAutomationRunbook -AutomationAccountName $using:AccountName -Name $using:ChildJobTriggeringRunbookName  -ResourceGroupName $using:ResourceGroupName -RunOn $runOn -Parameters $params
+    $jobId = $JobCloudPS.JobId
+    
+    $jobDetails = Get-AzAutomationJob -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName -Id $jobId
+    $terminalStates = @("Completed", "Failed", "Stopped", "Suspended")
+    $retryCount = 1
+    while ($terminalStates -notcontains $jobDetails.Status -and $retryCount -le 6) {
+        Start-Sleep -s 20
+        $retryCount++
+        $jobDetails = Get-AzAutomationJob -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName -Id $jobId
+    }
+    
+    $jobStatus = $jobDetails.Status
+
+    if($jobStatus -eq "Completed"){
+        Write-Output "Job for PS runbook to tirgger Child runbook ran successfully on $runOn and output stream is visible"
     }
     else{
         Write-Error "PS Runbook Job execution status after 10 minutes of waiting is $jobStatus"
@@ -188,7 +221,10 @@ function Start-AssetVerificationJob {
         [Parameter(Mandatory = $false)]
         [string] $runOn = ""
     )
-    Start-AzAutomationRunbook -AutomationAccountName $using:AccountName -Name $using:AssetVerificationRunbookPSName  -ResourceGroupName $using:ResourceGroupName -Parameters $using:assetVerificationRunbookParams -RunOn $runOn  -MaxWaitSeconds 1200 -Wait
+    if($assetCreationSucceeded -eq $true){
+        Start-AzAutomationRunbook -AutomationAccountName $using:AccountName -Name $using:AssetVerificationRunbookPSName  -ResourceGroupName $using:ResourceGroupName -Parameters $using:assetVerificationRunbookParams -RunOn $runOn  -MaxWaitSeconds 1200 -Wait
+    }
+    
 }
 
 Connect-To-AzAccount
@@ -320,7 +356,11 @@ sequence {
     #Create required assets
     try{
         $creationParams = @{"guid" = $guid; "ResourceGroupName"=$ResourceGroupName; "AccountName"= $AccountName }
-        Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name "Test-AutomationAssets-Creation" -Parameters $creationParams -ResourceGroupName $ResourceGroupName -MaxWaitSeconds 1800 -Wait
+        $jobOutput = Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name "Test-AutomationAssets-Creation" -Parameters $creationParams -ResourceGroupName $ResourceGroupName -MaxWaitSeconds 1800 -Wait
+
+        if($jobOutput -eq "Asset Creation Succeeded"){
+            $WORKFLOW:assetCreationSucceeded = $true
+        }
     }
     catch{
         Write-Error "Error creating assets..."
@@ -334,6 +374,7 @@ sequence {
     Start-PythonJob 
     Start-PsJob 
     # Start-PsWFJob 
+    Start-ChildJobTriggeringRunbook
     Start-AssetVerificationJob 
 }
 
@@ -343,6 +384,7 @@ sequence {
     #Start-PythonJob -runOn $workerGroupName
     Start-PsJob -runOn $workerGroupName
     # Start-PsWFJob -runOn $workerGroupName
+    Start-ChildJobTriggeringRunbook -runOn $workerGroupName
     Start-AssetVerificationJob -runOn $workerGroupName
 }
 

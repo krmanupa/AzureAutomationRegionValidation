@@ -10,6 +10,9 @@ Param(
 [Parameter(Mandatory = $false)]
 [string] $UriStart = "https://management.azure.com/subscriptions/cd45f23b-b832-4fa4-a434-1bf7e6f14a5a"
 )
+
+$ErrorActionPreference = "Stop"
+
 $connectionName = "AzureRunAsConnection"
 try
 {
@@ -58,7 +61,7 @@ $UnspecifiedVariableNameEn = "TestEnUnspecifiedVariable" + "-" + $guid
 Write-Verbose "Import module" -verbose
 $TestModule = New-AzAutomationModule -AutomationAccountName $AccountName -Name $ModuleName -ContentLink "http://contosostorage.blob.core.windows.net/modules/ContosoModule.zip" -ResourceGroupName $ResourceGroupName
 if($TestModule.Name -like $ModuleName) {
-Write-Output "Module creation successful"
+Write-Verbose "Module creation successful"
 } 
 else{
 Write-Error "Module creation failed"
@@ -74,7 +77,7 @@ function CreateAzureConnection {
     Start-Sleep -s 60
     $TestAzConnection = Get-AzAutomationConnection -Name $AzureConnectionName -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountName
     if($TestAzConnection.Name -eq $AzureConnectionName) {
-    Write-Output "Azure connection creation successful"
+    Write-Verbose "Azure connection creation successful"
     } 
     else{
     Write-Error "Azure connection creation failed"
@@ -85,7 +88,7 @@ function CreateAzureConnection {
     Start-Sleep -s 60
     $TestAzConnection = Get-AzAutomationConnection -Name $AzureConnectionName -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountName
     if($TestAzConnection.AutomationCertificateName -eq "TestCert") {
-    Write-Output "Azure connection update successful"
+    Write-Verbose "Azure connection update successful"
     } 
     else{
     Write-Error "Azure connection update failed"
@@ -100,7 +103,7 @@ function CreateAzureServicePrincipalConnection {
     Start-Sleep -s 60
     $TestAzSPConnection = Get-AzAutomationConnection -Name $AzureSPConnectionName -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountName
     if($TestAzSPConnection.Name -like $AzureSPConnectionName) {
-    Write-Output "AzureServicePrincipal connection creation successful"
+    Write-Verbose "AzureServicePrincipal connection creation successful"
     } 
     else{
     Write-Error "AzureServicePrincipal connection creation failed"
@@ -111,7 +114,7 @@ function CreateAzureServicePrincipalConnection {
     Start-Sleep -s 60
     $TestAzSPConnection = Get-AzAutomationConnection -Name $AzureSPConnectionName -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountName
     if($TestAzSPConnection.ApplicationId -like "AppId") {
-    Write-Output "AzureServicePrincipal connection update successful"
+    Write-Verbose "AzureServicePrincipal connection update successful"
     } 
     else{
     Write-Error "AzureServicePrincipal connection update failed"
@@ -127,7 +130,7 @@ function CreateAzureClassicCertConnection {
     Start-Sleep -s 60
     $TestAzClassicCertConnection = Get-AzAutomationConnection -Name $AzureClassicCertConnectionName -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountName
     if($TestAzClassicCertConnection.Name -like $AzureClassicCertConnectionName) {
-    Write-Output "AzureClassicCertificate connection creation successful"
+    Write-Verbose "AzureClassicCertificate connection creation successful"
     } 
     else{
     Write-Error "AzureClassicCertificate connection creation failed"
@@ -138,7 +141,7 @@ function CreateAzureClassicCertConnection {
     Start-Sleep -s 60
     $TestAzClassicCertConnection = Get-AzAutomationConnection -Name $AzureClassicCertConnectionName -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountName
     if($TestAzClassicCertConnection.CertificateAssetName -like "ClassicRunAsAccountCertifcateAssetName") {
-    Write-Output "AzureClassicCertificate connection update successful"
+    Write-Verbose "AzureClassicCertificate connection update successful"
     } 
     else{
     Write-Error "AzureClassicCertificate connection update failed"
@@ -164,7 +167,7 @@ function CreateCredential {
     Start-Sleep -s 60
     $TestCredential = Get-AzAutomationCredential -AutomationAccountName $AccountName -Name $CredentialName -ResourceGroupName $ResourceGroupName
     if($TestCredential.UserName -like $User) {
-    Write-Output "Credential creation successful"
+    Write-Verbose "Credential creation successful"
     } 
     else{
     Write-Error "Credential creation failed"
@@ -178,7 +181,7 @@ function CreateCredential {
     Start-Sleep -s 60
     $TestCredential = Get-AzAutomationCredential -AutomationAccountName $AccountName -Name $CredentialName -ResourceGroupName $ResourceGroupName
     if($TestCredential.UserName -like $User) {
-    Write-Output "Credential creation successful"
+    Write-Verbose "Credential creation successful"
     } 
     else{
     Write-Error "Credential creation failed"
@@ -195,7 +198,7 @@ function CreateStringVariable {
     Start-Sleep -s 60
     $TestStringVariable = Get-AzAutomationVariable -AutomationAccountName $AccountName -Name $StringVariableName -ResourceGroupName $ResourceGroupName
     if($TestStringVariable.Value -like $StringVariableValue) {
-        Write-Output "String variable creation successful"
+        Write-Verbose "String variable creation successful"
     } 
     else{
         Write-Error "String variable creation failed"
@@ -207,7 +210,7 @@ function CreateStringVariable {
     Start-Sleep -s 60
     $TestStringVariable = Get-AzAutomationVariable -AutomationAccountName $AccountName -Name $StringVariableName -ResourceGroupName $ResourceGroupName
     if($TestStringVariable.Value -like $StringVariableValue) {
-        Write-Output "String variable update successful"
+        Write-Verbose "String variable update successful"
     } 
     else{
         Write-Error "String variable update failed"
@@ -220,7 +223,7 @@ function CreateIntVariable {
 
     $TestIntVariable = Get-AzAutomationVariable -AutomationAccountName $AccountName -Name $IntVariableName -ResourceGroupName $ResourceGroupName
     if($TestIntVariable.Value -eq $IntVariableValue) {
-        Write-Output "Int variable creation successful"
+        Write-Verbose "Int variable creation successful"
     } 
     else{
         Write-Error "Int variable creation failed"
@@ -231,7 +234,7 @@ function CreateIntVariable {
 
     $TestIntVariable = Get-AzAutomationVariable -AutomationAccountName $AccountName -Name $IntVariableName -ResourceGroupName $ResourceGroupName
     if($TestIntVariable.Value -eq $IntVariableValue) {
-        Write-Output "Int variable update successful"
+        Write-Verbose "Int variable update successful"
     } 
     else{
         Write-Error "Int variable update failed"
@@ -246,7 +249,7 @@ function CreateBoolVariable {
     Start-Sleep -s 60
     $TestBoolVariable = Get-AzAutomationVariable -AutomationAccountName $AccountName -Name $BoolVariableName -ResourceGroupName $ResourceGroupName
     if($TestBoolVariable.Value -eq $BoolVariableValue) {
-        Write-Output "Bool variable creation successful"
+        Write-Verbose "Bool variable creation successful"
     } 
     else{
         Write-Error "Bool variable creation failed"
@@ -258,7 +261,7 @@ function CreateBoolVariable {
     Start-Sleep -s 60
     $TestBoolVariable = Get-AzAutomationVariable -AutomationAccountName $AccountName -Name $BoolVariableName -ResourceGroupName $ResourceGroupName
     if($TestBoolVariable.Value -eq $BoolVariableValue) {
-        Write-Output "Bool variable update successful"
+        Write-Verbose "Bool variable update successful"
     } 
     else{
         Write-Error "Bool variable update failed"
@@ -277,7 +280,7 @@ function CreateDateTimeVariable {
     Start-Sleep -s 60
     $TestDateTimeVariable = Get-AzAutomationVariable -AutomationAccountName $AccountName -Name $DateTimeVariableValue -ResourceGroupName $ResourceGroupName
     if($TestDateTimeVariable.Value -eq $DateTimeVariableValue) {
-        Write-Output "DateTime variable creation successful"
+        Write-Verbose "DateTime variable creation successful"
     } 
     else{
         Write-Error "DateTime variable creation failed"
@@ -289,7 +292,7 @@ function CreateDateTimeVariable {
     Start-Sleep -s 60
     $TestDateTimeVariable = Get-AzAutomationVariable -AutomationAccountName $AccountName -Name $DateTimeVariableValue -ResourceGroupName $ResourceGroupName
     if($TestDateTimeVariable.Value -eq $DateTimeVariableValue) {
-        Write-Output "DateTime variable update successful"
+        Write-Verbose "DateTime variable update successful"
     } 
     else{
         Write-Error "DateTime variable update failed"
@@ -304,7 +307,7 @@ function CreateUnspecifiedVariable {
     Start-Sleep -s 60
     $TestUnspecifiedVariable = Get-AzAutomationVariable -AutomationAccountName $AccountName -Name $UnspecifiedVariableName -ResourceGroupName $ResourceGroupName
     if($TestUnspecifiedVariable.Value.AutomationAccountName -like $UnspecifiedVariableValue.AutomationAccountName) {
-        Write-Output "Unspecified variable creation successful"
+        Write-Verbose "Unspecified variable creation successful"
     } 
     else{
         Write-Error "Unspecified variable creation failed"
@@ -316,7 +319,7 @@ function CreateUnspecifiedVariable {
     Start-Sleep -s 60
     $TestUnspecifiedVariable = Get-AzAutomationVariable -AutomationAccountName $AccountName -Name $UnspecifiedVariableName -ResourceGroupName $ResourceGroupName
     if($TestUnspecifiedVariable.Value.AutomationAccountName -like $UnspecifiedVariableValue.AutomationAccountName) {
-        Write-Output "Unspecified variable update successful"
+        Write-Verbose "Unspecified variable update successful"
     } 
     else{
         Write-Error "Unspecified variable update failed"
@@ -331,7 +334,7 @@ function CreateEncryptedStringVariable {
     Start-Sleep -s 60
     $TestEncryptedVariable = Get-AzAutomationVariable -AutomationAccountName $AccountName -Name $EncryptedVariableName -ResourceGroupName $ResourceGroupName
     if($TestEncryptedVariable.Encrypted -eq $True) {
-        Write-Output "Encrypted string variable creation successful"
+        Write-Verbose "Encrypted string variable creation successful"
     } 
     else{
         Write-Error "Encrypted string variable creation failed"
@@ -344,7 +347,7 @@ function CreateEncryptedStringVariable {
     Start-Sleep -s 60
     $TestEncryptedVariable = Get-AzAutomationVariable -AutomationAccountName $AccountName -Name $EncryptedVariableName -ResourceGroupName $ResourceGroupName
     if($TestEncryptedVariable.Encrypted -eq $True) {
-        Write-Output "Encrypted string variable update successful"
+        Write-Verbose "Encrypted string variable update successful"
     } 
     else{
         Write-Error "Encrypted string variable update failed"
@@ -358,7 +361,7 @@ function CreateEncryptedIntVariable {
     Start-Sleep -s 120
     $TestIntVariable = Get-AzAutomationVariable -AutomationAccountName $AccountName -Name $IntVariableNameEn -ResourceGroupName $ResourceGroupName
     if($TestIntVariable.Value -eq $IntVariableValue) {
-        Write-Output "Encrypted Int variable creation successful"
+        Write-Verbose "Encrypted Int variable creation successful"
     } 
     else{
         Write-Error "Encrypted Int variable creation failed"
@@ -371,7 +374,7 @@ function CreateEncryptedIntVariable {
     Start-Sleep -s 120
     $TestIntVariable = Get-AzAutomationVariable -AutomationAccountName $AccountName -Name $IntVariableNameEn -ResourceGroupName $ResourceGroupName
     if($TestIntVariable.Value -eq $IntVariableValue) {
-        Write-Output "Encrypted Int variable update successful"
+        Write-Verbose "Encrypted Int variable update successful"
     } 
     else{
         Write-Error "Encrypted Int variable update failed"
@@ -386,7 +389,7 @@ function CreateEncryptedBoolVariable {
     Start-Sleep -s 120
     $TestBoolVariable = Get-AzAutomationVariable -AutomationAccountName $AccountName -Name $BoolVariableNameEn -ResourceGroupName $ResourceGroupName
     if($TestBoolVariable.Value -eq $BoolVariableValue) {
-        Write-Output "Encrypted Bool variable creation successful"
+        Write-Verbose "Encrypted Bool variable creation successful"
     } 
     else{
         Write-Error "Encrypted Bool variable creation failed"
@@ -398,7 +401,7 @@ function CreateEncryptedBoolVariable {
     Start-Sleep -s 120
     $TestBoolVariable = Get-AzAutomationVariable -AutomationAccountName $AccountName -Name $BoolVariableNameEn -ResourceGroupName $ResourceGroupName
     if($TestBoolVariable.Value -eq $BoolVariableValue) {
-        Write-Output "Encrypted Bool variable update successful"
+        Write-Verbose "Encrypted Bool variable update successful"
     } 
     else{
         Write-Error "Encrypted Bool variable update failed"
@@ -414,7 +417,7 @@ function CreateEncryptedDateTimeVariable {
     Start-Sleep -s 60
     $TestDateTimeVariable = Get-AzAutomationVariable -AutomationAccountName $AccountName -Name $DateTimeVariableNameEn -ResourceGroupName $ResourceGroupName
     if($TestDateTimeVariable.Value -eq $DateTimeVariableValue) {
-        Write-Output "Encrypted DateTime variable creation successful"
+        Write-Verbose "Encrypted DateTime variable creation successful"
     } 
     else{
         Write-Error "Encrypted DateTime variable creation failed"
@@ -426,7 +429,7 @@ function CreateEncryptedDateTimeVariable {
     Start-Sleep -s 60
     $TestDateTimeVariable = Get-AzAutomationVariable -AutomationAccountName $AccountName -Name $DateTimeVariableNameEn -ResourceGroupName $ResourceGroupName
     if($TestDateTimeVariable.Value -eq $DateTimeVariableValue) {
-        Write-Output "Encrypted DateTime variable update successful"
+        Write-Verbose "Encrypted DateTime variable update successful"
     } 
     else{
         Write-Error "Encrypted DateTime variable update failed"
@@ -441,7 +444,7 @@ function CreateEncryptedUnspecifiedVariable {
     Start-Sleep -s 60
     $TestUnspecifiedVariable = Get-AzAutomationVariable -AutomationAccountName $AccountName -Name $UnspecifiedVariableNameEn -ResourceGroupName $ResourceGroupName
     if($TestUnspecifiedVariable.Value.AutomationAccountName -like $UnspecifiedVariableValue.AutomationAccountName) {
-        Write-Output "Encrypted Unspecified variable creation successful"
+        Write-Verbose "Encrypted Unspecified variable creation successful"
     } 
     else{
         Write-Error "Encrypted Unspecified variable creation failed"
@@ -453,7 +456,7 @@ function CreateEncryptedUnspecifiedVariable {
     Start-Sleep -s 60
     $TestUnspecifiedVariable = Get-AzAutomationVariable -AutomationAccountName $AccountName -Name $UnspecifiedVariableNameEn -ResourceGroupName $ResourceGroupName
     if($TestUnspecifiedVariable.Value.AutomationAccountName -like $UnspecifiedVariableValue.AutomationAccountName) {
-        Write-Output "Encrypted Unspecified variable update successful"
+        Write-Verbose "Encrypted Unspecified variable update successful"
     } 
     else{
         Write-Error "Encrypted Unspecified variable update failed"
@@ -490,7 +493,7 @@ function CreateCertificate {
 
     $Cert = Get-AzAutomationCertificate -Name $certName -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
     if($Cert.Thumbprint -like "edfab8580e873bbc2ac188ed6d02411019b7d8d3") {
-        Write-Output "Certificate asset creation successful"
+        Write-Verbose "Certificate asset creation successful"
     } 
     else{
         Write-Error "Certificate asset creation failed"
@@ -501,7 +504,7 @@ function CreateCertificate {
 
     $updatedCert = Get-AzAutomationCertificate -Name $certName -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
     if($updatedCert.Description -eq $updatedDesc){
-        Write-Output "Automation Certificate Update successful"
+        Write-Verbose "Automation Certificate Update successful"
     }
     else{
         Write-Error "Automation Certificate Update failed"
@@ -530,6 +533,8 @@ function CreateVariables {
 CreateVariables
 CreateConnection
 CreateCredential
+CreateCertificate
+Write-Output "Asset Creation Succeeded"
 
 
 
