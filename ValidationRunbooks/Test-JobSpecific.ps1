@@ -1,15 +1,19 @@
 workflow Test-JobSpecific {
-    Param(
-        [Parameter(Mandatory = $false)]
-        [string] $location = "West Central US",  
+    Param( 
         [Parameter(Mandatory = $false)]
         [string] $Environment = "AzureCloud", 
+        [Parameter(Mandatory = $true)]
+        [string] $ResourceGroupName,
+        [Parameter(Mandatory = $true)]
+        [string] $AccountName,
         [Parameter(Mandatory = $false)]
-        [string] $ResourceGroupName = "Test-auto-creation",
-        [Parameter(Mandatory = $false)]
-        [string] $AccountName = "Test-auto-creation-aa",
-        [Parameter(Mandatory = $false)]
-        [string] $WorkspaceName = "Test-LAWorkspace",
+        [string] $workerGroupName = "",
+        [Parameter(Mandatory=$true)]
+        [string] $guid ,
+        [Parameters (Mandatory=$false)]
+        [Boolean] $RunCloudTests = $true,
+        [Parameters (Mandatory=$false)]
+        [Boolean] $RunHybridTests = $true,
         [Parameter(Mandatory = $false)]
         [string] $RunbookPSName = "ps-job-test",
         [Parameter(Mandatory = $false)]
@@ -22,16 +26,9 @@ workflow Test-JobSpecific {
         [string]$AssetVerificationRunbookPSName = "AssetVerificationRunbook"
         )
 
-$workspaceId = ""
-$workspacePrimaryKey = ""
-$agentEndpoint = ""
-$aaPrimaryKey = ""
+
 $workerGroupName = "test-auto-create"
 
-$guid_val = [guid]::NewGuid()
-$guid = $guid_val.ToString()
-
-$vmName = "Test-VM-" + $guid.SubString(0,4) 
 $assetVerificationRunbookParams = @{"guid" = $guid}
 $assetCreationSucceeded = $false
 
@@ -229,234 +226,103 @@ function Start-AssetVerificationJob {
 
 Connect-To-AzAccount
 
-parallel {
-
-    sequence {
-        ### Create an automation account
-        Write-Verbose "Getting Automation Account....."
-        #$AccountName = $AccountName + $guid.ToString()
-        
-        # Write-Verbose "Create account" -verbose
-        try {
-            $Account = Get-AzAutomationAccount -Name $AccountName -ResourceGroupName $ResourceGroupName 
-            if($Account.AutomationAccountName -like $AccountName) {
-                Write-Verbose "Account retrieved successfully"
-                $accRegInfo = Get-AzAutomationRegistrationInfo -ResourceGroup $ResourceGroupName -AutomationAccountName  $AccountName
-                $WORKFLOW:agentEndpoint = $accRegInfo.Endpoint
-                $WORKFLOW:aaPrimaryKey = $accRegInfo.PrimaryKey
-
-                Write-Verbose "AgentService endpoint: $agentEndpoint  Primary key : $aaPrimaryKey"
-            } 
-            else{
-                Write-Error "Account retrieval failed"
-            }
-        }
-        catch {
-            Write-Error "Account retrieval failed"
-            Write-Error -Message $_.Exception
-            throw $_.Exception
-        }
-    }
-
-    sequence {
-        Write-Verbose "Creating LA Workspace...."
-        ### Create an LA workspace
-        $workspace_guid = [guid]::NewGuid()
-        $WorkspaceName = $WorkspaceName + $workspace_guid.ToString()
-
-        # Create a new Log Analytics workspace if needed
-        try {
-            Write-Verbose "Creating new workspace named $WorkspaceName in region $Location..."
-            $Workspace = New-AzOperationalInsightsWorkspace -Location $Location -Name $WorkspaceName -Sku Standard -ResourceGroupName $ResourceGroupName
-            Write-Verbose $workspace
-            Start-Sleep -s 60
-
-            Write-Verbose "Enabling Automation for the created workspace...."
-            Set-AzOperationalInsightsIntelligencePack -ResourceGroupName $ResourceGroupName -WorkspaceName $WorkspaceName -IntelligencePackName "AzureAutomation" -Enabled $true
-
-            $workspaceDetails = Get-AzOperationalInsightsWorkspace -ResourceGroupName $ResourceGroupName -Name $WorkspaceName
-            $WORKFLOW:workspaceId = $workspaceDetails.CustomerId
-
-            $workspaceSharedKey = Get-AzOperationalInsightsWorkspaceSharedKey -ResourceGroupName $ResourceGroupName -Name $WorkspaceName
-            $WORKFLOW:workspacePrimaryKey = $workspaceSharedKey.PrimarySharedKey
-
-            Write-Verbose "Workspace Details to be used to register machine are WorkspaceId : $workspaceId and WorkspaceKey : $workspacePrimaryKey"
-        } catch {
-            Write-Verbose "Error creating LA workspace"
-            Write-Error -Message $_.Exception
-            throw $_.Exception
-        }
-    }
-
-    sequence {
-        ##Create an AZ VM  
-        try{
-            
-        $vmNetworkName = "TestVnet" + $guid.SubString(0,4)
-        $subnetName = "TestSubnet"+ $guid.SubString(0,4)
-        $newtworkSG = "TestNetworkSecurityGroup" + $guid.SubString(0,4)
-        $ipAddressName = "TestPublicIpAddress" + $guid.SubString(0,4)
-        $User = "TestVMUser"
-        $Password = ConvertTo-SecureString "SecurePassword12345" -AsPlainText -Force
-        $VMCredential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $User, $Password
-        New-AzVm `
-            -ResourceGroupName $ResourceGroupName `
-            -Name $vmName `
-            -Location $location `
-            -VirtualNetworkName $vmNetworkName `
-            -SubnetName $subnetName `
-            -SecurityGroupName $newtworkSG `
-            -PublicIpAddressName $ipAddressName `
-            -Credential $VMCredential
-
-        Start-Sleep -s 120
-        }
-        catch{
-            Write-Error "Error creating VM"
-            Write-Error -Message $_.Exception
-            throw $_.Exception
-        }
-    }
-}
-
-#run az vm extesion
-sequence {
-        
-    ## Run AZ VM Extension to download and Install MMA Agent
-    $WORKFLOW:workerGroupName = 'test-auto-create'
-    $commandToExecute = "powershell .\WorkerDownloadAndRegister.ps1 -workspaceId $WORKFLOW:workspaceId -workspaceKey $WORKFLOW:workspacePrimaryKey -workerGroupName $workerGroupName -agentServiceEndpoint $WORKFLOW:agentEndpoint -aaToken $WORKFLOW:aaPrimaryKey"
-
-    $settings = @{"fileUris" =  @("https://raw.githubusercontent.com/krmanupa/AutoRegisterHW/master/VMExtensionScripts/WorkerDownloadAndRegister.ps1"); "commandToExecute" = $commandToExecute};
-    $protectedSettings = @{"storageAccountName" = ""; "storageAccountKey" = ""};
-
-    # Run Az VM Extension to download and register worker.
-    Write-Verbose "Running Az VM Extension...."
-    Write-Verbose "Command executing ... $commandToExecute"
-    try {
-        Set-AzVMExtension -ResourceGroupName $ResourceGroupName `
-        -Location $location `
-            -VMName $vmName `
-            -Name "Register-HybridWorker" `
-            -Publisher "Microsoft.Compute" `
-            -ExtensionType "CustomScriptExtension" `
-            -TypeHandlerVersion "1.10" `
-            -Settings $settings `
-            -ProtectedSettings $protectedSettings
-
-    }
-    catch {
-        Write-Error "Error running VM extension"
-        Write-Error -Message $_.Exception
-        throw $_.Exception
-    }
-}
-
-# Execute the runbook to create required Automation assets on this account.
-sequence {
-    #Create required assets
-    try{
-        $creationParams = @{"guid" = $guid; "ResourceGroupName"=$ResourceGroupName; "AccountName"= $AccountName }
-        $jobOutput = Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name "Test-AutomationAssets-Creation" -Parameters $creationParams -ResourceGroupName $ResourceGroupName -MaxWaitSeconds 1800 -Wait
-
-        if($jobOutput -eq "Asset Creation Succeeded"){
-            $WORKFLOW:assetCreationSucceeded = $true
-        }
-    }
-    catch{
-        Write-Error "Error creating assets..."
-    }
-}
-
 #Execute cloud and hybrid jobs
 sequence {
-    Write-Verbose "Starting Cloud Jobs..."
-    
-    Start-PythonJob 
-    Start-PsJob 
-    # Start-PsWFJob 
-    Start-ChildJobTriggeringRunbook
-    Start-AssetVerificationJob 
+    if($RunCloudTests -eq $true){
+        Write-Verbose "Starting Cloud Jobs..."
+
+        Start-PythonJob 
+        Start-PsJob 
+        # Start-PsWFJob 
+        Start-ChildJobTriggeringRunbook
+        Start-AssetVerificationJob 
+    }
 }
 
 sequence {
-    Write-Verbose "Starting Hybrid Jobs..."
+    if($RunHybridTests -eq $true -and $workerGroupName -ne ""){
+        Write-Verbose "Starting Hybrid Jobs..."
     
-    #Start-PythonJob -runOn $workerGroupName
-    Start-PsJob -runOn $workerGroupName
-    # Start-PsWFJob -runOn $workerGroupName
-    Start-ChildJobTriggeringRunbook -runOn $workerGroupName
-    Start-AssetVerificationJob -runOn $workerGroupName
-}
-
-#Test CMK
-sequence {
-    #Enable CMK 
-    $creationParams = @{$Environment = $Environment;"ResourceGroupName"=$ResourceGroupName; "AccountName"= $AccountName}
-    $jobOutput = Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name "Test-CMK" -Parameters $creationParams -ResourceGroupName $ResourceGroupName -MaxWaitSeconds 1800 -Wait
-
-    if($jobOutput -eq "Enabled CMK"){
-        Start-AssetVerificationJob
+        #Start-PythonJob -runOn $workerGroupName
+        Start-PsJob -runOn $workerGroupName
+        # Start-PsWFJob -runOn $workerGroupName
+        Start-ChildJobTriggeringRunbook -runOn $workerGroupName
         Start-AssetVerificationJob -runOn $workerGroupName
     }
-
-    #Disable CMK 
-    $creationParams = @{$Environment = $Environment;"ResourceGroupName"=$ResourceGroupName; "AccountName"= $AccountName; "IsEnableCMK" = $false}
-    $jobOutput = Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name "Test-CMK" -Parameters $creationParams -ResourceGroupName $ResourceGroupName -MaxWaitSeconds 1800 -Wait
-
-    if($jobOutput -eq "Disabled CMK"){
-        Start-AssetVerificationJob
-        Start-AssetVerificationJob -runOn $workerGroupName
+    else{
+        Write-Output "Check the hybrid related params passed, RunHybridTests should be True and WorkerGroupName should not be Empty"
     }
 }
 
+# #Test CMK
+# sequence {
+#     #Enable CMK 
+#     $creationParams = @{$Environment = $Environment;"ResourceGroupName"=$ResourceGroupName; "AccountName"= $AccountName}
+#     $jobOutput = Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name "Test-CMK" -Parameters $creationParams -ResourceGroupName $ResourceGroupName -MaxWaitSeconds 1800 -Wait
 
-#Run Jobs using Schedules and Webhooks
-parallel {
-    #Cloud
-    sequence {
-        $scheduleJobOutput = Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name "Test-Schedule"  -ResourceGroupName $ResourceGroupName -MaxWaitSeconds 900 -Wait
-        if($scheduleJobOutput -eq "Schedule Scenario Verified"){
-            Write-Verbose "Cloud job Schedule Scenario Verified"
-        }
-        else{
-            Write-Error "Cloud job Schedule Scenario failed"
-        }
-    }
-    sequence {
-        $webhookJobOutput = Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name "Test-Webhook"  -ResourceGroupName $ResourceGroupName -MaxWaitSeconds 900 -Wait
-        
-        if($webhookJobOutput -eq "Webhook Scenario Verified"){
-            Write-Verbose "Cloud Webhook Scenario Verified"
-        }
-        else{
-            Write-Error "Cloud Webhook Scenario failed"
-        }
-        
-    }
-    #hybrid
-    sequence {
-        $params = @{"WorkerGroup" = $workerGroupName}
-        $scheduleJobOutput = Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name "Test-Schedule"  -ResourceGroupName $ResourceGroupName -Parameters $params -MaxWaitSeconds 900 -Wait
-        
-        if($scheduleJobOutput -eq "Schedule Scenario Verified"){
-            Write-Verbose "Schedule Scenario Verified"
-        }
-        else{
-            Write-Error "Schedule Scenario Verified"
-        }
-    }
-    sequence {
-        $params = @{"WorkerGroup" = $workerGroupName}
-        $webhookJobOutput = Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name "Test-Webhook"  -ResourceGroupName $ResourceGroupName -Parameters $params -MaxWaitSeconds 900 -Wait
+#     if($jobOutput -eq "Enabled CMK"){
+#         Start-AssetVerificationJob
+#         Start-AssetVerificationJob -runOn $workerGroupName
+#     }
 
-        if($webhookJobOutput -eq "Webhook Scenario Verified"){
-            Write-Verbose "Hybrid Webhook Scenario Verified"
-        }
-        else{
-            Write-Error "Hybrid Webhook Scenario failed"
-        }
-    }
-}
+#     #Disable CMK 
+#     $creationParams = @{"Environment" = $Environment;"ResourceGroupName"=$ResourceGroupName; "AccountName"= $AccountName; "IsEnableCMK" = $false}
+#     $jobOutput = Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name "Test-CMK" -Parameters $creationParams -ResourceGroupName $ResourceGroupName -MaxWaitSeconds 1800 -Wait
+
+#     if($jobOutput -eq "Disabled CMK"){
+#         Start-AssetVerificationJob
+#         Start-AssetVerificationJob -runOn $workerGroupName
+#     }
+# }
+
+
+# #Run Jobs using Schedules and Webhooks
+# parallel {
+#     #Cloud
+#     sequence {
+#         $scheduleJobOutput = Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name "Test-Schedule"  -ResourceGroupName $ResourceGroupName -MaxWaitSeconds 900 -Wait
+#         if($scheduleJobOutput -eq "Schedule Scenario Verified"){
+#             Write-Verbose "Cloud job Schedule Scenario Verified"
+#         }
+#         else{
+#             Write-Error "Cloud job Schedule Scenario failed"
+#         }
+#     }
+#     sequence {
+#         $webhookJobOutput = Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name "Test-Webhook"  -ResourceGroupName $ResourceGroupName -MaxWaitSeconds 900 -Wait
+        
+#         if($webhookJobOutput -eq "Webhook Scenario Verified"){
+#             Write-Verbose "Cloud Webhook Scenario Verified"
+#         }
+#         else{
+#             Write-Error "Cloud Webhook Scenario failed"
+#         }
+        
+#     }
+#     #hybrid
+#     sequence {
+#         $params = @{"WorkerGroup" = $workerGroupName}
+#         $scheduleJobOutput = Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name "Test-Schedule"  -ResourceGroupName $ResourceGroupName -Parameters $params -MaxWaitSeconds 900 -Wait
+        
+#         if($scheduleJobOutput -eq "Schedule Scenario Verified"){
+#             Write-Verbose "Schedule Scenario Verified"
+#         }
+#         else{
+#             Write-Error "Schedule Scenario Verified"
+#         }
+#     }
+#     sequence {
+#         $params = @{"WorkerGroup" = $workerGroupName}
+#         $webhookJobOutput = Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name "Test-Webhook"  -ResourceGroupName $ResourceGroupName -Parameters $params -MaxWaitSeconds 900 -Wait
+
+#         if($webhookJobOutput -eq "Webhook Scenario Verified"){
+#             Write-Verbose "Hybrid Webhook Scenario Verified"
+#         }
+#         else{
+#             Write-Error "Hybrid Webhook Scenario failed"
+#         }
+#     }
+# }
 
 
 # De register the HW

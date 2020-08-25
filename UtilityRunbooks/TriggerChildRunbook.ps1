@@ -13,8 +13,9 @@ $childJobId = $childJob.Guid
 
 Write-Output "Polling for job completion for job Id : $childJobId"
 $terminalStates = @("Completed", "Failed", "Stopped", "Suspended")
+$jobDetails = Get-AzAutomationJob -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName -Id $childJobId
 $retryCount = 1
-while ($terminalStates -notcontains $jobDetails.Status -and $retryCount -le 6) {
+while ($terminalStates -notcontains $jobDetails.Status -and $retryCount -le 20) {
     Start-Sleep -s 30
     $retryCount++
     $jobDetails = Get-AzAutomationJob -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName -Id $childJobId

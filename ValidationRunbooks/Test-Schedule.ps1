@@ -1,7 +1,5 @@
 
-Param(
-    [Parameter(Mandatory = $false)]
-    [string] $location = "West Europe",  
+Param( 
     [Parameter(Mandatory = $false)]
     [string] $Environment = "AzureCloud", 
     [Parameter(Mandatory = $false)]

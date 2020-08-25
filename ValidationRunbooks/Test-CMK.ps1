@@ -3,9 +3,9 @@ Param(
 [Parameter(Mandatory = $false)]
 [string] $Environment = "AzureCloud", 
 [Parameter(Mandatory = $false)]
-[string] $ResourceGroupName = "krmanupa-TestScope-EAP",
+[string] $ResourceGroupName = "test-auto-creation",
 [Parameter(Mandatory = $false)]
-[string] $AccountName = "test-krmanupa-eap",
+[string] $AccountName = "Test-auto-creation-aa",
 [Parameter(Mandatory = $false)]
 [string] $IsEnableCMK = $true,
 [Parameter(Mandatory = $false)]

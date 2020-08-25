@@ -1,10 +1,10 @@
 Param(
-    [Parameter(Mandatory = $true)]
-    [string] $location ,  # "West Central US", "USGov Arizona"
-    [Parameter(Mandatory = $true)]
-    [string] $Environment , # "AzureCloud", "AzureUSGovernment", "AzureChinaCloud"
-    [Parameter(Mandatory = $true)]
-    [string] $UriStart ,  # "https://management.azure.com/subscriptions/cd45f23b-b832-4fa4-a434-1bf7e6f14a5a", "https://management.usgovcloudapi.net/subscriptions/a1d148ea-c45e-45f7-acc5-b7bcc10813af"
+    [Parameter(Mandatory = $false)]
+    [string] $location = "West Central US",  # "West Central US", "USGov Arizona"
+    [Parameter(Mandatory = $false)]
+    [string] $Environment = "AzureCloud", # "AzureCloud", "AzureUSGovernment", "AzureChinaCloud"
+    [Parameter(Mandatory = $false)]
+    [string] $UriStart = "https://management.azure.com/subscriptions/cd45f23b-b832-4fa4-a434-1bf7e6f14a5a",  # "https://management.azure.com/subscriptions/cd45f23b-b832-4fa4-a434-1bf7e6f14a5a", "https://management.usgovcloudapi.net/subscriptions/a1d148ea-c45e-45f7-acc5-b7bcc10813af"
     [Parameter(Mandatory = $true)]
     [string] $AccountDscName , # <region> + "-RunnerAutomationAccount"
     [Parameter(Mandatory = $false)]
