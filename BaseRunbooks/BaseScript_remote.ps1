@@ -1,7 +1,7 @@
 workflow BaseScript_remote{
     Param(
     [Parameter(Mandatory = $false)]
-    [string] $location = "West Europe",  
+    [string] $location = "West Central US",  
     [Parameter(Mandatory = $false)]
     [string] $Environment = "AzureCloud", 
     [Parameter(Mandatory = $false)]
@@ -31,7 +31,7 @@ $workerGroupName = "test-auto-create"
 
 $assetVerificationRunbookParams = @{"guid" = $guid}
 $CreateHWGRunbookName = "CreateHWG"
-$StartCloudHybridJobsRunbookName = "Test-JoSpecific"
+$StartCloudHybridJobsRunbookName = "Test-JobSpecific"
 
 function Connect-To-AzAccount{
     Param(
@@ -63,66 +63,86 @@ function Connect-To-AzAccount{
     }
 }
 
-function Start-JobSpecificRunbook{
-    Param(
-    # ResourceGroup Name
-    [Parameter(Mandatory = $true)]
-    [string] $resourceGroupName,
-    [Parameter(Mandatory = $true)]
-    [string] $accName
-    )
-    Start-AzAutomationRunbook -Name "Test-JobSpecific" -ResourceGroupName $resourceGroupName -AutomationAccountName $accName
-}
-
 function Start-AccountSpecificRunbook {
-    $accountParams =  @{"location"= $using:location ;"Environment" = $using:Environment;"ResourceGroupName"=$using:ResourceGroupName; "AccountName"= $using:AccountName;"NewResourceGroupName" = $using:NewResourceGroupName; }
+
+    Write-Output "Starting Account Specific Validation...."
+
+    $accountParams =  @{"location"= $using:location ;"Environment" = $using:Environment;"ResourceGroupName"=$using:ResourceGroupName;"NewResourceGroupName" = $using:NewResourceGroupName}
 
     Start-AzAutomationRunbook -Name "Test-AutomationAccount-Creation" -ResourceGroupName $using:ResourceGroupName -AutomationAccountName $using:AccountName -Parameters $accountParams -MaxWaitSeconds 600 -Wait
+
+    Write-Output "Account Specific Validation Completed"
 }
 
 function Start-AssetCreation {
-    $automationAssetsCreationsParams =  @{"guid" = $using:guid;"ResourceGroupName"=$using:ResourceGroupName; "AccountName"= $using:AccountName;"Environment" = $using:Environment; }
+    Write-Output "Starting Asset Creation ..."
+    
+    $automationAssetsCreationsParams =  @{"guid" = $using:guid;"ResourceGroupName"=$using:ResourceGroupName; "AccountName"= $using:AccountName;"Environment" = $using:Environment }
     
     Start-AzAutomationRunbook -Name "Test-AutomationAssets-Creation" -ResourceGroupName $using:ResourceGroupName -AutomationAccountName $using:AccountName -Parameters $automationAssetsCreationsParams -MaxWaitSeconds 600 -Wait
+
+    Write-Output "Asset Creation Completed"
 }
 
 function Start-HybridWorkerGroupCreation {
+    Write-Output "Starting Hybrid Worker Group Creation...."
+    
     $hwgCreationParams = @{"location" = $using:location; "Environment" = $using:Environment; "ResourceGroupName" = $using:ResourceGroupName; "AccountName" = $using:AccountName;"WorkerType" = "Windows"; "vmName" = $using:vmName; "WorkerGroupName" = $using:workerGroupName}
 
     Start-AzAutomationRunbook -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName -Name $using:CreateHWGRunbookName -Parameters $hwgCreationParams -MaxWaitSeconds 1800 -Wait
+
+    Write-Output "Hybrid Worker Group Creation Completed"
 }
 
 function Start-CloudAndHybridJobsValidation {
-    $startCloudHybridJobsParams = @{"ResourceGroupName" = $using:ResourceGroupName; "AccountName" = $using:AccountName; "workerGroupName" = $using:workerGroupName; "guid"=$using:guid}
+    Write-Output "Starting Cloud and Hybrid Jobs Validation..."
+    
+    $startCloudHybridJobsParams = @{"Environment"=$using:Environment;"ResourceGroupName" = $using:ResourceGroupName; "AccountName" = $using:AccountName; "workerGroupName" = $using:workerGroupName; "guid"=$using:guid}
 
     Start-AzAutomationRunbook -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName -Name $using:StartCloudHybridJobsRunbookName -Parameters $startCloudHybridJobsParams -MaxWaitSeconds 1800 -Wait
+
+    Write-Output "Cloud and Hybrid Jobs Validation Completed"
 }
 
 function Start-DSCSpecificRunbook {
-    $dscParams = @{"AccountDscName" = $using:AccountName; "ResourceGroupName"=$using:ResourceGroupName}
+    Write-Output "Starting DSC Validation..."
+
+    $dscParams = @{"location"=$using:location; "Environment"=$using:Environment;"AccountDscName" = $using:AccountName; "ResourceGroupName"=$using:ResourceGroupName}
     Start-AzAutomationRunbook -Name "Test-dsc" -ResourceGroupName $using:ResourceGroupName -AutomationAccountName $using:AccountName -Parameters $dscParams -MaxWaitSeconds 1800 -Wait
+
+    Write-Output "DSC Validation Completed"
 }
 
 
 function Start-SourceControl {
-    $sourceControlParams = @{"AccountName"=$using:AccountName; "ResourceGroupName"=$using:ResourceGroupName}
+    Write-Output "Starting SourceControl Validation...."
+    
+    $sourceControlParams = @{"Environment"=$using:Environment;"AccountName"=$using:AccountName; "ResourceGroupName"=$using:ResourceGroupName}
     Start-AzAutomationRunbook -Name "Test-SourceControl" -ResourceGroupName $using:ResourceGroupName -AutomationAccountName $using:AccountName -Parameters $sourceControlParams -MaxWaitSeconds 1800 -Wait
+
+    Write-Output "SourceControl Validation Completed"
 }
 
 function Start-Webhook {
-    $webhookParamsForCloud = @{"AccountName"=$using:AccountName; "ResourceGroupName"=$using:ResourceGroupName}
+    Write-Output "Starting Webhook Validation..."
+    $webhookParamsForCloud = @{"Environment"=$using:Environment;"AccountName"=$using:AccountName; "ResourceGroupName"=$using:ResourceGroupName}
     Start-AzAutomationRunbook -Name "Test-Webhook" -ResourceGroupName $using:ResourceGroupName -AutomationAccountName $using:AccountName -Parameters $webhookParamsForCloud -MaxWaitSeconds 1800 -Wait
 
-    $webhookParamsForHybrid = @{"AccountName"=$using:AccountName; "ResourceGroupName"=$using:ResourceGroupName; "WorkerGroup" = $using:workerGroupName}
+    $webhookParamsForHybrid = @{"Environment"=$using:Environment;"AccountName"=$using:AccountName; "ResourceGroupName"=$using:ResourceGroupName; "WorkerGroup" = $using:workerGroupName}
     Start-AzAutomationRunbook -Name "Test-Webhook" -ResourceGroupName $using:ResourceGroupName -AutomationAccountName $using:AccountName -Parameters $webhookParamsForHybrid -MaxWaitSeconds 1800 -Wait
+    Write-Output "Webhook Validation Completed"
 }
 
 function Start-Schedule {
-    $scheduleParamsForCloud = @{"AccountName"=$using:AccountName; "ResourceGroupName"=$using:ResourceGroupName}
+    Write-Output "Starting JobSchedule Validation..."
+
+    $scheduleParamsForCloud = @{"Environment"=$using:Environment;"AccountName"=$using:AccountName; "ResourceGroupName"=$using:ResourceGroupName}
     Start-AzAutomationRunbook -Name "Test-Schedule" -ResourceGroupName $using:ResourceGroupName -AutomationAccountName $using:AccountName -Parameters $scheduleParamsForCloud -MaxWaitSeconds 1800 -Wait
 
-    $scheduleParamsForHybrid = @{"AccountName"=$using:AccountName; "ResourceGroupName"=$using:ResourceGroupName; "WorkerGroup" = $using:workerGroupName}
+    $scheduleParamsForHybrid = @{"Environment"=$using:Environment;"AccountName"=$using:AccountName; "ResourceGroupName"=$using:ResourceGroupName; "WorkerGroup" = $using:workerGroupName}
     Start-AzAutomationRunbook -Name "Test-Schedule" -ResourceGroupName $using:ResourceGroupName -AutomationAccountName $using:AccountName -Parameters $scheduleParamsForHybrid -MaxWaitSeconds 1800 -Wait
+
+    Write-Output "JobSchedule Validation Completed"
 }
 
 
@@ -135,6 +155,9 @@ function Start-AssetVerificationJob {
 }
 
 function Start-CMK {
+
+    Write-Output "Starting CMK Validation.."
+
     #Enable CMK 
     $creationParams = @{"Environment" = $using:Environment;"ResourceGroupName"=$using:ResourceGroupName; "AccountName"= $using:AccountName}
     $jobOutput = Start-AzAutomationRunbook -AutomationAccountName $using:AccountName -Name "Test-CMK" -Parameters $creationParams -ResourceGroupName $using:ResourceGroupName -MaxWaitSeconds 1800 -Wait
@@ -153,6 +176,38 @@ function Start-CMK {
         Start-AssetVerificationJob
         Start-AssetVerificationJob -runOn $workerGroupName
     }
+    
+    Write-Output "CMK Validation Completed"
 }
+
+Connect-To-AzAccount
+Checkpoint-Workflow
+
+Start-AccountSpecificRunbook
+Checkpoint-Workflow
+
+Start-AssetCreation
+Checkpoint-Workflow
+
+Start-HybridWorkerGroupCreation
+Checkpoint-Workflow
+
+Start-CloudAndHybridJobsValidation
+Checkpoint-Workflow
+
+Start-DSCSpecificRunbook
+Checkpoint-Workflow
+
+Start-SourceControl
+Checkpoint-Workflow
+
+Start-Webhook
+Checkpoint-Workflow
+
+Start-Schedule
+Checkpoint-Workflow
+
+Start-CMK
+Checkpoint-Workflow
 
 }

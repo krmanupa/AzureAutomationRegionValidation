@@ -8,7 +8,7 @@ Param(
     [Parameter(Mandatory = $true)]
     [string] $AccountDscName , # <region> + "-RunnerAutomationAccount"
     [Parameter(Mandatory = $false)]
-    [string] $VMDscName , # <region> + "-TestDscVM"
+    [string] $VMDscName = "TestDSCVM" , # <region> + "-TestDscVM"
     [Parameter(Mandatory = $false)]
     [string] $ResourceGroupName = "RunnerRG"
 )
