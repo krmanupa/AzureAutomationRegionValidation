@@ -2,10 +2,8 @@
 Param(
     [Parameter(Mandatory = $false)]
     [string] $location = "West Central US" ,  # "West Central US", "USGov Arizona"
-    [Parameter(Mandatory = $true)]
-    [string] $Environment , # "AzureCloud", "AzureUSGovernment", "AzureChinaCloud"
     [Parameter(Mandatory = $false)]
-    [string] $UriStart = "https://management.azure.com/subscriptions/cd45f23b-b832-4fa4-a434-1bf7e6f14a5a" ,  # "https://management.azure.com/subscriptions/cd45f23b-b832-4fa4-a434-1bf7e6f14a5a", "https://management.usgovcloudapi.net/subscriptions/a1d148ea-c45e-45f7-acc5-b7bcc10813af"
+    [string] $Environment = "AzureCloud", # "AzureCloud", "AzureUSGovernment", "AzureChinaCloud"
     [Parameter(Mandatory = $false)]
     [string] $ResourceGroupName = "RunnerRG",
     [Parameter(Mandatory = $false)]
@@ -22,7 +20,6 @@ Param(
 #Import-Module Az.Resources
 #Import-Module Az.Automation
 
-$ErrorActionPreference = "Stop"
 
 $guid = New-Guid
 $AccountName = $AccountName + $guid.ToString()
@@ -32,13 +29,13 @@ $connectionName = "AzureRunAsConnection"
 try
 {
     $servicePrincipalConnection = Get-AutomationConnection -Name $connectionName      
-    Write-Verbose "Logging in to Azure..." -verbose
+    Write-Output "Logging in to Azure..." -verbose
     Connect-AzAccount `
         -ServicePrincipal `
         -TenantId $servicePrincipalConnection.TenantId `
         -ApplicationId $servicePrincipalConnection.ApplicationId `
         -CertificateThumbprint $servicePrincipalConnection.CertificateThumbprint `
-        -Environment $Environment
+        -Environment $Environment | Out-Null
 }
 catch {
     if (!$servicePrincipalConnection)
@@ -51,80 +48,50 @@ catch {
     }
 }
 
-    # Write-Verbose "Create account" -verbose
-    $Account = New-AzAutomationAccount -Name $AccountName -Location $location -ResourceGroupName $ResourceGroupName -Plan "Free"
-    if($Account.AutomationAccountName -like $AccountName) {
-        Write-Verbose "Account created successfully"
-    } 
-    else{
-        Write-Error "Account creation failed"
-    }
+# Write-Output "Create account" -verbose
+($Account = New-AzAutomationAccount -Name $AccountName -Location $location -ResourceGroupName $ResourceGroupName -Plan "Free") | Out-Null
 
-    # Write-Verbose "Create runbooks" -verbose
-    New-AzAutomationRunbook -AutomationAccountName $AccountName -Name $RunbookName -ResourceGroupName $ResourceGroupName -Type "PowerShell"
-    New-AzAutomationRunbook -AutomationAccountName $AccountName -Name $RunbookPython2Name -ResourceGroupName $ResourceGroupName -Type "Python2"
+if($Account.AutomationAccountName -like $AccountName) {
+    Write-Output "Account created successfully"
+} 
+else{
+    Write-Error "Account Operations :: Account creation failed"
+}
 
-    # Write-Verbose "Get auth token" -verbose
-    $currentAzureContext = Get-AzContext
-    $azureRmProfile = [Microsoft.Azure.Commands.Common.Authentication.Abstractions.AzureRmProfileProvider]::Instance.Profile
-    $profileClient = New-Object Microsoft.Azure.Commands.ResourceManager.Common.RMProfileClient($azureRmProfile)
-    $Token = $profileClient.AcquireAccessToken($currentAzureContext.Tenant.TenantId)
+#update the Automation Account
+$Tags = @{"tag01"="value01"}
+Set-AzAutomationAccount -Name $AccountName -ResourceGroupName $ResourceGroupName -Tags $Tags | Out-Null
+Start-Sleep -s 100
+($Account = Get-AzAutomationAccount -Name $AccountName -ResourceGroupName $ResourceGroupName ) | Out-Null
 
-    # Write-Verbose "Draft runbooks" -verbose
-    try{
-        $Headers = @{}
-        $Headers.Add("Authorization","bearer "+ " " + "$($Token.AccessToken)")
-        $contentType3 = "application/text"
-        $bodyPS = 'Write-Verbose "Hello" '        
-        $PutContentPSUri = "$UriStart/resourceGroups/$ResourceGroupName/providers/Microsoft.Automation/automationAccounts/$AccountName/runbooks/$RunbookName/draft/content?api-version=2015-10-31"
-        Invoke-RestMethod -Uri $PutContentPSUri -Method Put -ContentType $contentType3 -Headers $Headers -Body $bodyPS
-        $bodyPy2 = 'print "Hello" '        
-        $PutContentPy2Uri = "$UriStart/resourceGroups/$ResourceGroupName/providers/Microsoft.Automation/automationAccounts/$AccountName/runbooks/$RunbookPython2Name/draft/content?api-version=2015-10-31"
-        Invoke-RestMethod -Uri $PutContentPy2Uri -Method Put -ContentType $contentType3 -Headers $Headers -Body $bodyPy2
-    }
-    catch{
-        Write-Error -Message $_.Exception
-    }
-    
-    # Write-Verbose "Publish runbooks" -verbose
-    Publish-AzAutomationRunbook -AutomationAccountName $AccountName -Name $RunbookName -ResourceGroupName $ResourceGroupName
-    Publish-AzAutomationRunbook -AutomationAccountName $AccountName -Name $RunbookPython2Name -ResourceGroupName $ResourceGroupName
-
-    # Write-Verbose "Start cloud jobs" -verbose
-    $JobCloud = Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name $RunbookName -ResourceGroupName $ResourceGroupName -MaxWaitSeconds 300 -Wait
-    if($JobCloud -like "Hello") {
-        Write-Verbose "Cloud job for PowerShell runbook ran successfully"
+#verify tags have been added or not
+if($null -ne $Account.Tags){
+    if($Account.Tags["tag01"] -eq "value01"){
+        Write-Output "Account Updated Successfully"
     }
     else{
-        Write-Error "Job for the PowerShell runbook couldn't complete"
+        Write-Error "Account Operations :: Account Update Failed"
     }
-    $JobCloud = Start-AzAutomationRunbook -AutomationAccountName $AccountName -Name $RunbookPython2Name -ResourceGroupName $ResourceGroupName -MaxWaitSeconds 300 -Wait
-    if($JobCloud -like "Hello") {
-        Write-Verbose "Cloud job for Python2 runbook ran successfully"
-    }
-    else{
-        Write-Error "Job for the Python2 runbook couldn't complete"
-    }
+}
+else{
+    Write-Error "Account Update Failed"
+}
 
-    # Write-Verbose "Delete runbooks" -verbose
-    Remove-AzAutomationRunbook -AutomationAccountName $AccountName -Name $RunbookName -ResourceGroupName $ResourceGroupName -Force
-    Remove-AzAutomationRunbook -AutomationAccountName $AccountName -Name $RunbookPython2Name -ResourceGroupName $ResourceGroupName -Force
-    
-    # Write-Verbose "Move account" -verbose 
-    $AutomationAccount = Get-AzResource -ResourceName $AccountName
-    Move-AzResource -ResourceId $AutomationAccount.ResourceId -DestinationResourceGroupName $NewResourceGroupName -Force
-    $Account1 = Get-AzAutomationAccount -Name $AccountName -ResourceGroupName $NewResourceGroupName 
-    if($Account1.AutomationAccountName -like $AccountName) {
-        Write-Verbose "Account moved to new resource group successfully"
-    } 
-    else{
-        Write-Error "Account move operation failed"
-    }
+# Write-Output "Move account" -verbose 
+$AutomationAccount = Get-AzResource -ResourceName $AccountName
+Move-AzResource -ResourceId $AutomationAccount.ResourceId -DestinationResourceGroupName $NewResourceGroupName -Force
+$Account1 = Get-AzAutomationAccount -Name $AccountName -ResourceGroupName $NewResourceGroupName 
+if($Account1.AutomationAccountName -like $AccountName) {
+    Write-Output "Account moved to new resource group successfully"
+} 
+else{
+    Write-Error "Account Operations :: Account move operation failed"
+}
 
-    # Write-Verbose "Delete account" -verbose
-    Remove-AzAutomationAccount -Name $AccountName -ResourceGroupName $NewResourceGroupName -Force
+# Write-Output "Delete account" -verbose
+Remove-AzAutomationAccount -Name $AccountName -ResourceGroupName $NewResourceGroupName -Force
 
-    Write-Output "Automation Account Operations Verified"
+Write-Output "Account Operations :: Automation Account Operations Verified"
 
 
 

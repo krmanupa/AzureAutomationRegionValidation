@@ -19,7 +19,7 @@ $connectionName = "AzureRunAsConnection"
 try
 {
     $servicePrincipalConnection = Get-AutomationConnection -Name $connectionName      
-    Write-Verbose "Logging in to Azure..." -verbose
+    Write-Output "Logging in to Azure..." -verbose
     Connect-AzAccount `
         -ServicePrincipal `
         -TenantId $servicePrincipalConnection.TenantId `
@@ -38,7 +38,7 @@ catch {
     }
 }
 
-Write-Verbose "Create VM" -verbose
+Write-Output "Create VM" -verbose
 $User = "TestDscVMUser"
 $Password = ConvertTo-SecureString "SecurePassword12345" -AsPlainText -Force
 $VMCredential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $User, $Password
@@ -52,13 +52,13 @@ New-AzVm `
     -PublicIpAddressName "TestDscPublicIpAddress123" `
     -Credential $VMCredential
 
-    Write-Verbose "Get auth token" -verbose
+    Write-Output "Get auth token" -verbose
     $currentAzureContext = Get-AzContext
     $azureRmProfile = [Microsoft.Azure.Commands.Common.Authentication.Abstractions.AzureRmProfileProvider]::Instance.Profile
     $profileClient = New-Object Microsoft.Azure.Commands.ResourceManager.Common.RMProfileClient($azureRmProfile)
     $Token = $profileClient.AcquireAccessToken($currentAzureContext.Tenant.TenantId)
 
-    Write-Verbose "Create configuration" -verbose
+    Write-Output "Create configuration" -verbose
     try{
         $Headers = @{}
         $Headers.Add("Authorization","bearer "+ " " + "$($Token.AccessToken)")
@@ -90,18 +90,18 @@ New-AzVm `
         Write-Error -Message $_.Exception
     }
 
-Write-Verbose "Compile configuration" -verbose
+Write-Output "Compile configuration" -verbose
 Start-AzAutomationDscCompilationJob -ConfigurationName "SetupServer" -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountDscName
 $CompilationJobs = Get-AzAutomationDscCompilationJob -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountDscName
 $JobStream = $CompilationJobs[0] | Get-AzAutomationDscCompilationJobOutput -Stream "Any"
 
 Start-Sleep -Seconds 100
 
-Write-Verbose "Register DSC node" -verbose
+Write-Output "Register DSC node" -verbose
 Register-AzAutomationDscNode -AutomationAccountName $AccountDscName -AzureVMName $VMDscName -ResourceGroupName $ResourceGroupName -NodeConfigurationName "SetupServer.localhost"
 $Node = Get-AzAutomationDscNode -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountDscName -ConfigurationName "SetupServer.localhost"
 if($Node.Name -like $VMDscName) {
-    Write-Verbose "Node registered successfully"
+    Write-Output "Node registered successfully"
 } 
 else{
     Write-Error "Node registration failed"
@@ -109,26 +109,26 @@ else{
 
 Start-Sleep -Seconds 100
 
-Write-Verbose "Get node report" -verbose
+Write-Output "Get node report" -verbose
 $NodeReport = Get-AzAutomationDscNodeReport -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountDscName -NodeId $Node.Id -Latest
 $NodeReport.Status -like "Compliant"
 if($NodeReport.Status -like "Compliant") {
-    Write-Verbose "Node status compliant"
+    Write-Output "Node status compliant"
 } 
 else{
     Write-Error "Node not in compliant state"
 }
 
-Write-Verbose "Unregister node" -verbose
+Write-Output "Unregister node" -verbose
 Unregister-AzAutomationDscNode -AutomationAccountName $AccountDscName -ResourceGroupName $ResourceGroupName -Id $Node.Id -Force
 
-Write-Verbose "Delete VM" -verbose
+Write-Output "Delete VM" -verbose
 Remove-AzVM -ResourceGroupName $ResourceGroupName -Name $VMDscName -Force
 
-Write-Verbose "Remove node configuration" -verbose
+Write-Output "Remove node configuration" -verbose
 Remove-AzAutomationDscNodeConfiguration -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountDscName -Name "SetupServer.localhost" -Force
 
-Write-Verbose "Remove configuration" -verbose
+Write-Output "Remove configuration" -verbose
 Remove-AzAutomationDscConfiguration -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountDscName -Name "SetupServer" -Force
 
 

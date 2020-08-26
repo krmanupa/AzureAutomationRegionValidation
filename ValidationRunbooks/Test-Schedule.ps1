@@ -20,7 +20,6 @@ Param(
     #Import-Module Az.Resources
     #Import-Module Az.Automation
     
-    $ErrorActionPreference = "Stop"
     
     $guid = New-Guid
     $ScheduleName = $ScheduleName + "-" + $guid.ToString()
@@ -67,7 +66,7 @@ Param(
         $Headers = @{}
         $Headers.Add("Authorization","bearer "+ " " + "$($Token.AccessToken)")
         $contentType3 = "application/text"
-        $bodyPS = 'Write-Verbose "TestingScheduler" '        
+        $bodyPS = 'Write-Output "TestingScheduler" '        
         $PutContentPSUri = "$UriStart/resourceGroups/$ResourceGroupName/providers/Microsoft.Automation/automationAccounts/$AccountName/runbooks/$RunbookName/draft/content?api-version=2015-10-31"
         Invoke-RestMethod -Uri $PutContentPSUri -Method Put -ContentType $contentType3 -Headers $Headers -Body $bodyPS
     }

@@ -30,7 +30,6 @@ workflow Test-JobSpecific {
 $workerGroupName = "test-auto-create"
 
 $assetVerificationRunbookParams = @{"guid" = $guid}
-$assetCreationSucceeded = $false
 
 
 function Connect-To-AzAccount{
@@ -43,7 +42,7 @@ function Connect-To-AzAccount{
     try
     {
         $servicePrincipalConnection = Get-AutomationConnection -Name $connectionName      
-        Write-Verbose "Logging in to Azure..." -verbose
+        Write-Output "Logging in to Azure..." -verbose
         Connect-AzAccount `
             -ServicePrincipal `
             -TenantId $servicePrincipalConnection.TenantId `
@@ -70,14 +69,14 @@ function Start-PythonJob {
     )
     # Python2
     $JobHybridPy2 = Start-AzAutomationRunbook -AutomationAccountName $using:AccountName -Name $using:RunbookPython2Name  -ResourceGroupName $using:ResourceGroupName -RunOn $runOn 
-    Write-Verbose "Python Job : $JobHybridPy2"
+    Write-Output "Python Job : $JobHybridPy2"
     $jobId = $JobHybridPy2.JobId
     
-    Write-Verbose "Polling for job completion for job Id : $jobId"
+    Write-Output "Polling for job completion for job Id : $jobId"
     $terminalStates = @("Completed", "Failed", "Stopped", "Suspended")
     $retryCount = 1
-    while ($terminalStates -notcontains $jobDetails.Status -and $retryCount -le 6) {
-        Start-Sleep -s 20
+    while ($terminalStates -notcontains $jobDetails.Status -and $retryCount -le 20) {
+        Start-Sleep -s 30
         $retryCount++
         $jobDetails = Get-AzAutomationJob -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName -Id $jobId
     }
@@ -87,15 +86,15 @@ function Start-PythonJob {
     if($jobStatus -eq "Completed"){
         $JobOutput = Get-AzAutomationJobOutput -Id $jobId -Stream "Output" -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
         if($JobOutput.Summary -like "SampleOutput") {
-            Write-Verbose "Hybrid job for Python runbook ran successfully and output stream is visible"
+            Write-Output "Hybrid job for Python runbook ran successfully and output stream is visible"
         }    
         $JobError = Get-AzAutomationJobOutput -Id $jobId -Stream "Error" -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
         if($JobError.Summary -like "Some Error") {
-            Write-Verbose "Error stream is visible"
+            Write-Output "Error stream is visible"
         }    
         $JobWarning = Get-AzAutomationJobOutput -Id $jobId -Stream "Warning" -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
         if($JobWarning.Summary -like "Some Warning") {
-            Write-Verbose "Warning stream is visible"
+            Write-Output "Warning stream is visible"
         } 
     }
     else{
@@ -115,8 +114,8 @@ function Start-PsJob {
     $jobDetails = Get-AzAutomationJob -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName -Id $jobId
     $terminalStates = @("Completed", "Failed", "Stopped", "Suspended")
     $retryCount = 1
-    while ($terminalStates -notcontains $jobDetails.Status -and $retryCount -le 6) {
-        Start-Sleep -s 20
+    while ($terminalStates -notcontains $jobDetails.Status -and $retryCount -le 20) {
+        Start-Sleep -s 30
         $retryCount++
         $jobDetails = Get-AzAutomationJob -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName -Id $jobId
     }
@@ -126,15 +125,15 @@ function Start-PsJob {
     if($jobStatus -eq "Completed"){
         $JobOutput = Get-AzAutomationJobOutput -Id $jobId -Stream "Output" -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
         if($JobOutput.Summary -like "SampleOutput") {
-            Write-Verbose "Job for PS runbook ran successfully on $runOn and output stream is visible"
+            Write-Output "Job for PS runbook ran successfully on $runOn and output stream is visible"
         }    
         $JobError = Get-AzAutomationJobOutput -Id $jobId -Stream "Error" -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
         if($JobError.Summary -like "SampleError") {
-            Write-Verbose "Job for PS runbook ran successfully on $runOn and Error stream is visible"
+            Write-Output "Job for PS runbook ran successfully on $runOn and Error stream is visible"
         }    
         $JobWarning = Get-AzAutomationJobOutput -Id $jobId -Stream "Warning" -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
         if($JobWarning.Summary -like "SampleWarning") {
-            Write-Verbose "Job for PS runbook ran successfully on $runOn and Warning stream is visible"
+            Write-Output "Job for PS runbook ran successfully on $runOn and Warning stream is visible"
         }
     }
     else{
@@ -155,8 +154,8 @@ function Start-ChildJobTriggeringRunbook {
     $jobDetails = Get-AzAutomationJob -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName -Id $jobId
     $terminalStates = @("Completed", "Failed", "Stopped", "Suspended")
     $retryCount = 1
-    while ($terminalStates -notcontains $jobDetails.Status -and $retryCount -le 6) {
-        Start-Sleep -s 20
+    while ($terminalStates -notcontains $jobDetails.Status -and $retryCount -le 20) {
+        Start-Sleep -s 30
         $retryCount++
         $jobDetails = Get-AzAutomationJob -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName -Id $jobId
     }
@@ -164,7 +163,7 @@ function Start-ChildJobTriggeringRunbook {
     $jobStatus = $jobDetails.Status
 
     if($jobStatus -eq "Completed"){
-        Write-Verbose "Job for PS runbook to tirgger Child runbook ran successfully on $runOn and output stream is visible"
+        Write-Output "Job for PS runbook to tirgger Child runbook ran successfully on $runOn and output stream is visible"
     }
     else{
         Write-Error "PS Runbook Job execution status after 10 minutes of waiting is $jobStatus"
@@ -181,35 +180,35 @@ function Start-PsWFJob {
     Start-Sleep -Seconds 400
     $Job1 = Get-AzAutomationJob -Id $pswfRbJobId -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
     if($Job1.Status -like "Running") {
-        Write-Verbose "Cloud job for PS WF runbook is running"
+        Write-Output "Cloud job for PS WF runbook is running"
     }  
     elseif($Job1.Status -like "Queued") {
         Write-Warning "Cloud job for PS WF runbook didn't start in 5 mins"
         Start-Sleep -Seconds 100
     }
 
-    Write-Verbose "Suspending PSWF runbook"
+    Write-Output "Suspending PSWF runbook"
     Suspend-AzAutomationJob  -Id $pswfRbJobId -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
     Start-Sleep -Seconds 30
     $Job2 = Get-AzAutomationJob -Id $pswfRbJobId -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
     if($Job2.Status -like "Suspended") {
-        Write-Verbose "Cloud job for PS WF runbook is suspended"
+        Write-Output "Cloud job for PS WF runbook is suspended"
     } 
 
-    Write-Verbose "Resuming PSWF runbook"
+    Write-Output "Resuming PSWF runbook"
     Resume-AzAutomationJob  -Id $pswfRbJobId -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
     Start-Sleep -Seconds 30
     $Job3 = Get-AzAutomationJob -Id $pswfRbJobId -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
     if($Job3.Status -like "Running") {
-        Write-Verbose "Cloud job for PS WF runbook has resumed running"
+        Write-Output "Cloud job for PS WF runbook has resumed running"
     } 
 
-    Write-Verbose "Stopping PSWF runbook"
+    Write-Output "Stopping PSWF runbook"
     Stop-AzAutomationJob  -Id $pswfRbJobId -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
     Start-Sleep -Seconds 30
     $Job4 = Get-AzAutomationJob -Id $pswfRbJobId -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
     if($Job4.Status -like "Stopping" -or $Job4.Status -like "Stopped") {
-        Write-Verbose "Cloud job for PS WF runbook is stopping"
+        Write-Output "Cloud job for PS WF runbook is stopping"
     }     
 }
 
@@ -218,10 +217,7 @@ function Start-AssetVerificationJob {
         [Parameter(Mandatory = $false)]
         [string] $runOn = ""
     )
-    if($assetCreationSucceeded -eq $true){
-        Start-AzAutomationRunbook -AutomationAccountName $using:AccountName -Name $using:AssetVerificationRunbookPSName  -ResourceGroupName $using:ResourceGroupName -Parameters $using:assetVerificationRunbookParams -RunOn $runOn  -MaxWaitSeconds 1200 -Wait
-    }
-    
+    Start-AzAutomationRunbook -AutomationAccountName $using:AccountName -Name $using:AssetVerificationRunbookPSName  -ResourceGroupName $using:ResourceGroupName -Parameters $using:assetVerificationRunbookParams -RunOn $runOn  -MaxWaitSeconds 1200 -Wait
 }
 
 Connect-To-AzAccount
@@ -229,7 +225,7 @@ Connect-To-AzAccount
 #Execute cloud and hybrid jobs
 sequence {
     if($RunCloudTests -eq $true){
-        Write-Verbose "Starting Cloud Jobs..."
+        Write-Output "Starting Cloud Jobs..."
 
         Start-PythonJob 
         Start-PsJob 
@@ -241,7 +237,7 @@ sequence {
 
 sequence {
     if($RunHybridTests -eq $true -and $workerGroupName -ne ""){
-        Write-Verbose "Starting Hybrid Jobs..."
+        Write-Output "Starting Hybrid Jobs..."
     
         #Start-PythonJob -runOn $workerGroupName
         Start-PsJob -runOn $workerGroupName

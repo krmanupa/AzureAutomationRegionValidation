@@ -18,8 +18,8 @@ workflow BaseScript_remote{
     [string] $RunbookPython2Name = "py2-job-test",
     [Parameter(Mandatory=$false)]
     [string]$AssetVerificationRunbookPSName = "AssetVerificationRunbook",
-    [Parameter (Mandatory= $true)]
-    [string] $NewResourceGroupName
+    [Parameter (Mandatory= $false)]
+    [string] $NewResourceGroupName = "TestRG"
     )
 
 $guid_val = [guid]::NewGuid()
@@ -49,7 +49,7 @@ function Connect-To-AzAccount{
             -TenantId $servicePrincipalConnection.TenantId `
             -ApplicationId $servicePrincipalConnection.ApplicationId `
             -CertificateThumbprint $servicePrincipalConnection.CertificateThumbprint `
-            -Environment $Environment
+            -Environment $Environment 
     }
     catch {
         if (!$servicePrincipalConnection)
@@ -69,9 +69,20 @@ function Start-AccountSpecificRunbook {
 
     $accountParams =  @{"location"= $using:location ;"Environment" = $using:Environment;"ResourceGroupName"=$using:ResourceGroupName;"NewResourceGroupName" = $using:NewResourceGroupName}
 
-    Start-AzAutomationRunbook -Name "Test-AutomationAccount-Creation" -ResourceGroupName $using:ResourceGroupName -AutomationAccountName $using:AccountName -Parameters $accountParams -MaxWaitSeconds 600 -Wait
+    Start-AzAutomationRunbook -Name "Test-AutomationAccount-Creation" -ResourceGroupName $using:ResourceGroupName -AutomationAccountName $using:AccountName -Parameters $accountParams -MaxWaitSeconds 600 -Wait 
 
     Write-Output "Account Specific Validation Completed"
+}
+
+function Start-RunbookSpecificOperations {
+    
+    Write-Output "Starting Runbook Specific Validations..."
+
+    $runbookParams =  @{"location"= $using:location ;"Environment" = $using:Environment;"AccountName"=$using:AccountName;"ResourceGroupName"=$using:ResourceGroupName}
+
+    Start-AzAutomationRunbook -Name "Test-Runbooks-Creation" -ResourceGroupName $using:ResourceGroupName -AutomationAccountName $using:AccountName -Parameters $runbookParams -MaxWaitSeconds 600 -Wait 
+
+    Write-Output "Runbook Specific Validation Completed"
 }
 
 function Start-AssetCreation {
@@ -79,7 +90,7 @@ function Start-AssetCreation {
     
     $automationAssetsCreationsParams =  @{"guid" = $using:guid;"ResourceGroupName"=$using:ResourceGroupName; "AccountName"= $using:AccountName;"Environment" = $using:Environment }
     
-    Start-AzAutomationRunbook -Name "Test-AutomationAssets-Creation" -ResourceGroupName $using:ResourceGroupName -AutomationAccountName $using:AccountName -Parameters $automationAssetsCreationsParams -MaxWaitSeconds 600 -Wait
+    Start-AzAutomationRunbook -Name "Test-AutomationAssets-Creation" -ResourceGroupName $using:ResourceGroupName -AutomationAccountName $using:AccountName -Parameters $automationAssetsCreationsParams -MaxWaitSeconds 2400 -Wait
 
     Write-Output "Asset Creation Completed"
 }
@@ -184,6 +195,9 @@ Connect-To-AzAccount
 Checkpoint-Workflow
 
 Start-AccountSpecificRunbook
+Checkpoint-Workflow
+
+Start-RunbookSpecificOperations
 Checkpoint-Workflow
 
 Start-AssetCreation

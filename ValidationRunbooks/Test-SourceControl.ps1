@@ -7,14 +7,13 @@ Param(
     [string] $ResourceGroupName
 )
 
-$ErrorActionPreference = "Stop"
 
 # Connect using RunAs account connection
 $connectionName = "AzureRunAsConnection"
 try
 {
     $servicePrincipalConnection = Get-AutomationConnection -Name $connectionName      
-    Write-Verbose "Logging in to Azure..." -verbose
+    Write-Output "Logging in to Azure..." -verbose
     Connect-AzAccount `
         -ServicePrincipal `
         -TenantId $servicePrincipalConnection.TenantId `
@@ -38,19 +37,19 @@ function CheckSyncJob {
         $repoName,
         $runbookNameOnTheGit
     )
-    Write-Verbose "Starting Sync job on $repoName"
+    Write-Output "Starting Sync job on $repoName"
     $syncJob = Start-AzAutomationSourceControlSyncJob -ResourceGroupName $ResourceGroupName `
                                                     -AutomationAccountName $AccountName `
                                                     -Name $repoName
 
     $jobId = $syncJob.JobId
-    Write-Verbose "Sync JobId : $jobId"
+    Write-Output "Sync JobId : $jobId"
     Start-Sleep -Seconds 300
 
     $runbookInTheAA = Get-AzAutomationRunbook -Name $runbookNameOnTheGit -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
 
     if($runbookInTheAA.Name -eq $runbookNameOnTheGit){
-        Write-Verbose "Sync job succeeded"
+        Write-Output "Sync job succeeded"
     }
     else{
         Write-Error "Sync job failed"
@@ -73,7 +72,7 @@ function VerifyUpdateOfSC {
                                                         -Name $repoName 
     
     if($gitSourceControl.PublishRunbook -eq $false){
-        Write-Verbose "GitHub Repo - Source Control Update Successful"
+        Write-Output "GitHub Repo - Source Control Update Successful"
     }
     else{
         Write-Error "GitHub Repo - Source Control Update Failed"
@@ -100,7 +99,7 @@ function TestSourceControlForGitRepo {
                                                         -Name $githubRepoName 
     
     if($gitSourceControl.FolderPath -like "/"){
-        Write-Verbose "GitHub Repo - Source Control Creation Successful"
+        Write-Output "GitHub Repo - Source Control Creation Successful"
     }
     else{
         Write-Error "GitHub Repo - Source Control Creation Failed"
@@ -124,7 +123,7 @@ function TestSourceControlForGitRepo {
                                                         -Name $githubRepoName
     
     if($null -eq $gitSourceControl){
-        Write-Verbose "GitHub Repo - Deleted SourceControl successfully."
+        Write-Output "GitHub Repo - Deleted SourceControl successfully."
     }
     else{
         Write-Error "GitHub Repo - Delete SourceControl failed."
@@ -154,7 +153,7 @@ function TestSourceControlForVsoGitUrlType1 {
                                                         -Name $vsoGitName_Type1 
     
     if($gitSourceControl.FolderPath -like "/Runbooks/PowershellScripts"){
-        Write-Verbose "VSO Git Type1 - Source Control Creation Successful"
+        Write-Output "VSO Git Type1 - Source Control Creation Successful"
     }
     else{
         Write-Error "VSO Git Type1 - Source Control Creation Failed"
@@ -174,7 +173,7 @@ function TestSourceControlForVsoGitUrlType1 {
     
     Start-Sleep -s 60
     if($null -eq $gitSourceControl){
-        Write-Verbose "VsoGit-1 Repo - Deleted SourceControl successfully."
+        Write-Output "VsoGit-1 Repo - Deleted SourceControl successfully."
     }
     else{
         Write-Error "VsoGit-1 Repo - Delete SourceControl failed."
@@ -204,7 +203,7 @@ function TestSourceControlForVsoGitUrlType2 {
                                                         -Name $vsoGitName_Type2 
     
     if($gitSourceControl.FolderPath -like "/"){
-        Write-Verbose "VSO Git Type2 - Source Control Creation Successful"
+        Write-Output "VSO Git Type2 - Source Control Creation Successful"
     }
     else{
         Write-Error "VSO Git Type2 - Source Control Creation Failed"
@@ -224,7 +223,7 @@ function TestSourceControlForVsoGitUrlType2 {
     
     Start-Sleep -s 60
     if($null -eq $gitSourceControl){
-        Write-Verbose "VsoGit-2 Repo - Deleted SourceControl successfully."
+        Write-Output "VsoGit-2 Repo - Deleted SourceControl successfully."
     }
     else{
         Write-Error "VsoGit-2 Repo - Delete SourceControl failed."
@@ -253,7 +252,7 @@ function TestSourceControlForVsoGitUrlType3 {
                                                         -Name $vsoGitName_Type3 
     
     if($gitSourceControl.FolderPath -like "/PSScripts"){
-        Write-Verbose "VSO Git Type3 - Source Control Creation Successful"
+        Write-Output "VSO Git Type3 - Source Control Creation Successful"
     }
     else{
         Write-Error "VSO Git Type3 - Source Control Creation Failed"
@@ -273,7 +272,7 @@ function TestSourceControlForVsoGitUrlType3 {
     
     Start-Sleep -s 60
     if($null -eq $gitSourceControl){
-        Write-Verbose "VsoGit-3 Repo - Deleted SourceControl successfully."
+        Write-Output "VsoGit-3 Repo - Deleted SourceControl successfully."
     }
     else{
         Write-Error "VsoGit-3 Repo - Delete SourceControl failed."

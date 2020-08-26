@@ -7,7 +7,7 @@ Param(
 [Parameter(Mandatory = $false)]
 [string] $AccountName = "Test-auto-creation-aa",
 [Parameter(Mandatory = $false)]
-[string] $IsEnableCMK = $true,
+[Boolean] $IsEnableCMK = $true,
 [Parameter(Mandatory = $false)]
 [string] $SubId = "cd45f23b-b832-4fa4-a434-1bf7e6f14a5a"
 )
@@ -54,7 +54,6 @@ function EnableAMK{
 "@
     $ContentType = "application/json"
 
-    Write-Verbose "Uri to Patch - $Uri"
     #Enable MSI
     $body = @"
     { "identity": { "type": "SystemAssigned" } }
@@ -79,7 +78,6 @@ function DisableCMK{
     $Uri = "https://$UriStart/subscriptions/$SubId/resourceGroups/$ResourceGroupName/providers/Microsoft.Automation/automationAccounts/"+$AccountName+"?api-version=2020-01-13-preview"
     $ContentType = "application/json"
 
-    Write-Verbose "Uri to Patch - $Uri"
 
     #Enable AMK
     $amkBody = @"
@@ -132,7 +130,7 @@ catch {
     }
 }
 
-if($IsEnableCMK){
+if($IsEnableCMK -eq $true){
     #add the account's service principal in the key vault to provide account the access to the KeyVault with all the required permissions
     # generate a key to apply that to the automation account as CMK.
     EnableCMK -UriStart "management.azure.com" -SubId $SubId -ResourceGroupName $ResourceGroupName -AutomationAccName $AccountName

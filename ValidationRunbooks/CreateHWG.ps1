@@ -20,7 +20,6 @@ Param(
 $guid_val = [guid]::NewGuid()
 $guid = $guid_val.ToString()
 
-$ErrorActionPreference = "Stop"
 
 # Connect using RunAs account connection
 $connectionName = "AzureRunAsConnection"
@@ -32,7 +31,7 @@ $workspacePrimaryKey = ""
 try
 {
     $servicePrincipalConnection = Get-AutomationConnection -Name $connectionName      
-    Write-Verbose "Logging in to Azure..." -verbose
+    Write-Output "Logging in to Azure..." -verbose
     Connect-AzAccount `
         -ServicePrincipal `
         -TenantId $servicePrincipalConnection.TenantId `
@@ -53,18 +52,18 @@ catch {
 
 
 #Get-Automation Account
-Write-Verbose "Getting Automation Account....."
+Write-Output "Getting Automation Account....."
 
-# Write-Verbose "Create account" -verbose
+# Write-Output "Create account" -verbose
 try {
     $Account = Get-AzAutomationAccount -Name $AccountName -ResourceGroupName $ResourceGroupName 
     if($Account.AutomationAccountName -like $AccountName) {
-        Write-Verbose "Account retrieved successfully"
+        Write-Output "Account retrieved successfully"
         $accRegInfo = Get-AzAutomationRegistrationInfo -ResourceGroup $ResourceGroupName -AutomationAccountName  $AccountName
         $agentEndpoint = $accRegInfo.Endpoint
         $aaPrimaryKey = $accRegInfo.PrimaryKey
 
-        Write-Verbose "AgentService endpoint: $agentEndpoint  Primary key : $aaPrimaryKey"
+        Write-Output "AgentService endpoint: $agentEndpoint  Primary key : $aaPrimaryKey"
     } 
     else{
         Write-Error "Account retrieval failed"
@@ -76,18 +75,18 @@ catch {
 
 
 ### Create an LA workspace
-Write-Verbose "Creating LA Workspace...."
+Write-Output "Creating LA Workspace...."
 $workspace_guid = [guid]::NewGuid()
 $WorkspaceName = $WorkspaceName + $workspace_guid.ToString()
 
 # Create a new Log Analytics workspace if needed
 try {
-    Write-Verbose "Creating new workspace named $WorkspaceName in region $Location..."
+    Write-Output "Creating new workspace named $WorkspaceName in region $Location..."
     $Workspace = New-AzOperationalInsightsWorkspace -Location $Location -Name $WorkspaceName -Sku Standard -ResourceGroupName $ResourceGroupName
-    Write-Verbose $workspace
+    Write-Output $workspace
     Start-Sleep -s 60
 
-    Write-Verbose "Enabling Automation for the created workspace...."
+    Write-Output "Enabling Automation for the created workspace...."
     Set-AzOperationalInsightsIntelligencePack -ResourceGroupName $ResourceGroupName -WorkspaceName $WorkspaceName -IntelligencePackName "AzureAutomation" -Enabled $true
 
     $workspaceDetails = Get-AzOperationalInsightsWorkspace -ResourceGroupName $ResourceGroupName -Name $WorkspaceName
@@ -96,7 +95,7 @@ try {
     $workspaceSharedKey = Get-AzOperationalInsightsWorkspaceSharedKey -ResourceGroupName $ResourceGroupName -Name $WorkspaceName
     $workspacePrimaryKey = $workspaceSharedKey.PrimarySharedKey
 
-    Write-Verbose "Workspace Details to be used to register machine are WorkspaceId : $workspaceId and WorkspaceKey : $workspacePrimaryKey"
+    Write-Output "Workspace Details to be used to register machine are WorkspaceId : $workspaceId and WorkspaceKey : $workspacePrimaryKey"
 } 
 catch {
     Write-Error "Error creating LA workspace"
@@ -137,8 +136,8 @@ if($WorkerType -eq "Windows"){
     $protectedSettings = @{"storageAccountName" = ""; "storageAccountKey" = ""};
 
     # Run Az VM Extension to download and register worker.
-    Write-Verbose "Running Az VM Extension...."
-    Write-Verbose "Command executing ... $commandToExecute"
+    Write-Output "Running Az VM Extension...."
+    Write-Output "Command executing ... $commandToExecute"
     try {
         Set-AzVMExtension -ResourceGroupName $ResourceGroupName `
         -Location $location `

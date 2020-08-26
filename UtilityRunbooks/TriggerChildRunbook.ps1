@@ -4,7 +4,30 @@ Param(
     [Parameter(Mandatory = $true)]
     [string] $ResourceGroupName   
 )
-$ErrorActionPreference = "Stop"
+
+try
+{
+    $servicePrincipalConnection = Get-AutomationConnection -Name $connectionName      
+    Write-Output "Logging in to Azure..." -verbose
+    Connect-AzAccount `
+        -ServicePrincipal `
+        -TenantId $servicePrincipalConnection.TenantId `
+        -ApplicationId $servicePrincipalConnection.ApplicationId `
+        -CertificateThumbprint $servicePrincipalConnection.CertificateThumbprint `
+        -Environment "AzureCloud"
+}
+catch {
+    if (!$servicePrincipalConnection)
+    {
+        $ErrorMessage = "Connection $connectionName not found."
+        throw $ErrorMessage
+    } else{
+        Write-Error -Message $_.Exception
+        throw $_.Exception
+    }
+}
+
+
 Write-Output "Triggering Child Runbook"
 
 $testPsRb = "ps-job-test"
