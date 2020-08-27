@@ -17,6 +17,7 @@ Param(
         [String] $WorkerGroupName
         )
  
+$ErrorActionPreference = "Stop"
 $guid_val = [guid]::NewGuid()
 $guid = $guid_val.ToString()
 
@@ -31,13 +32,13 @@ $workspacePrimaryKey = ""
 try
 {
     $servicePrincipalConnection = Get-AutomationConnection -Name $connectionName      
-    Write-Output "Logging in to Azure..." -verbose
+    Write-Output  "Logging in to Azure..." -verbose
     Connect-AzAccount `
         -ServicePrincipal `
         -TenantId $servicePrincipalConnection.TenantId `
         -ApplicationId $servicePrincipalConnection.ApplicationId `
         -CertificateThumbprint $servicePrincipalConnection.CertificateThumbprint `
-        -Environment $Environment
+        -Environment $Environment | Out-Null
 }
 catch {
     if (!$servicePrincipalConnection)
@@ -52,53 +53,53 @@ catch {
 
 
 #Get-Automation Account
-Write-Output "Getting Automation Account....."
+Write-Output  "Getting Automation Account....."
 
 # Write-Output "Create account" -verbose
 try {
-    $Account = Get-AzAutomationAccount -Name $AccountName -ResourceGroupName $ResourceGroupName 
+    ($Account = Get-AzAutomationAccount -Name $AccountName -ResourceGroupName $ResourceGroupName) | Out-Null 
     if($Account.AutomationAccountName -like $AccountName) {
-        Write-Output "Account retrieved successfully"
-        $accRegInfo = Get-AzAutomationRegistrationInfo -ResourceGroup $ResourceGroupName -AutomationAccountName  $AccountName
+        Write-Output  "Account retrieved successfully"
+        ($accRegInfo = Get-AzAutomationRegistrationInfo -ResourceGroup $ResourceGroupName -AutomationAccountName  $AccountName) | Out-Null
         $agentEndpoint = $accRegInfo.Endpoint
         $aaPrimaryKey = $accRegInfo.PrimaryKey
 
-        Write-Output "AgentService endpoint: $agentEndpoint  Primary key : $aaPrimaryKey"
+        Write-Output  "AgentService endpoint: $agentEndpoint  Primary key : $aaPrimaryKey"
     } 
     else{
-        Write-Error "Account retrieval failed"
+        Write-Error "HWG Creation :: Account retrieval failed"
     }
 }
 catch {
-    Write-Error "Account retrieval failed"
+    Write-Error "HWG Creation :: Account retrieval failed"
 }
 
 
 ### Create an LA workspace
-Write-Output "Creating LA Workspace...."
+Write-Output  "Creating LA Workspace...."
 $workspace_guid = [guid]::NewGuid()
 $WorkspaceName = $WorkspaceName + $workspace_guid.ToString()
 
 # Create a new Log Analytics workspace if needed
 try {
     Write-Output "Creating new workspace named $WorkspaceName in region $Location..."
-    $Workspace = New-AzOperationalInsightsWorkspace -Location $Location -Name $WorkspaceName -Sku Standard -ResourceGroupName $ResourceGroupName
+    ($Workspace = New-AzOperationalInsightsWorkspace -Location $Location -Name $WorkspaceName -Sku Standard -ResourceGroupName $ResourceGroupName) | Out-Null
     Write-Output $workspace
     Start-Sleep -s 60
 
     Write-Output "Enabling Automation for the created workspace...."
-    Set-AzOperationalInsightsIntelligencePack -ResourceGroupName $ResourceGroupName -WorkspaceName $WorkspaceName -IntelligencePackName "AzureAutomation" -Enabled $true
+    (Set-AzOperationalInsightsIntelligencePack -ResourceGroupName $ResourceGroupName -WorkspaceName $WorkspaceName -IntelligencePackName "AzureAutomation" -Enabled $true) | Out-Null
 
-    $workspaceDetails = Get-AzOperationalInsightsWorkspace -ResourceGroupName $ResourceGroupName -Name $WorkspaceName
+    ($workspaceDetails = Get-AzOperationalInsightsWorkspace -ResourceGroupName $ResourceGroupName -Name $WorkspaceName)  | Out-Null
     $workspaceId = $workspaceDetails.CustomerId
 
-    $workspaceSharedKey = Get-AzOperationalInsightsWorkspaceSharedKey -ResourceGroupName $ResourceGroupName -Name $WorkspaceName
+    ($workspaceSharedKey = Get-AzOperationalInsightsWorkspaceSharedKey -ResourceGroupName $ResourceGroupName -Name $WorkspaceName) | Out-Null
     $workspacePrimaryKey = $workspaceSharedKey.PrimarySharedKey
 
-    Write-Output "Workspace Details to be used to register machine are WorkspaceId : $workspaceId and WorkspaceKey : $workspacePrimaryKey"
+    Write-Output  "Workspace Details to be used to register machine are WorkspaceId : $workspaceId and WorkspaceKey : $workspacePrimaryKey"
 } 
 catch {
-    Write-Error "Error creating LA workspace"
+    Write-Error "HWG Creation :: Error creating LA workspace"
 }
 
 
@@ -120,12 +121,12 @@ if($WorkerType -eq "Windows"){
             -SubnetName $subnetName `
             -SecurityGroupName $newtworkSG `
             -PublicIpAddressName $ipAddressName `
-            -Credential $VMCredential
+            -Credential $VMCredential | Out-Null
 
         Start-Sleep -s 120
         }
     catch{
-        Write-Error "Error creating VM"
+        Write-Error "HWG Creation :: Error creating VM"
     }
 
     #Run the VM Extension to register the Hybrid worker
@@ -136,8 +137,8 @@ if($WorkerType -eq "Windows"){
     $protectedSettings = @{"storageAccountName" = ""; "storageAccountKey" = ""};
 
     # Run Az VM Extension to download and register worker.
-    Write-Output "Running Az VM Extension...."
-    Write-Output "Command executing ... $commandToExecute"
+    Write-Output  "Running Az VM Extension...."
+    Write-Output  "Command executing ... $commandToExecute"
     try {
         Set-AzVMExtension -ResourceGroupName $ResourceGroupName `
         -Location $location `
@@ -147,10 +148,10 @@ if($WorkerType -eq "Windows"){
             -ExtensionType "CustomScriptExtension" `
             -TypeHandlerVersion "1.10" `
             -Settings $settings `
-            -ProtectedSettings $protectedSettings
+            -ProtectedSettings $protectedSettings | Out-Null
 
     }
     catch {
-        Write-Error "Error running VM extension"
+        Write-Error "HWG Creation :: Error running VM extension"
     }
 }

@@ -19,13 +19,13 @@ $connectionName = "AzureRunAsConnection"
 try
 {
     $servicePrincipalConnection = Get-AutomationConnection -Name $connectionName      
-    Write-Output "Logging in to Azure..." -verbose
+    Write-Output  "Logging in to Azure..." -verbose
     Connect-AzAccount `
         -ServicePrincipal `
         -TenantId $servicePrincipalConnection.TenantId `
         -ApplicationId $servicePrincipalConnection.ApplicationId `
         -CertificateThumbprint $servicePrincipalConnection.CertificateThumbprint `
-        -Environment $Environment
+        -Environment $Environment | Out-Null
 }
 catch {
     if (!$servicePrincipalConnection)
@@ -38,7 +38,7 @@ catch {
     }
 }
 
-Write-Output "Create VM" -verbose
+Write-Output  "Create VM" -verbose
 $User = "TestDscVMUser"
 $Password = ConvertTo-SecureString "SecurePassword12345" -AsPlainText -Force
 $VMCredential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $User, $Password
@@ -50,15 +50,15 @@ New-AzVm `
     -SubnetName "TestDscSubnet123" `
     -SecurityGroupName "TestDscNetworkSecurityGroup123" `
     -PublicIpAddressName "TestDscPublicIpAddress123" `
-    -Credential $VMCredential
+    -Credential $VMCredential | Out-Null
 
-    Write-Output "Get auth token" -verbose
+    Write-Output  "Get auth token" -verbose
     $currentAzureContext = Get-AzContext
     $azureRmProfile = [Microsoft.Azure.Commands.Common.Authentication.Abstractions.AzureRmProfileProvider]::Instance.Profile
     $profileClient = New-Object Microsoft.Azure.Commands.ResourceManager.Common.RMProfileClient($azureRmProfile)
     $Token = $profileClient.AcquireAccessToken($currentAzureContext.Tenant.TenantId)
 
-    Write-Output "Create configuration" -verbose
+    Write-Output  "Create configuration" -verbose
     try{
         $Headers = @{}
         $Headers.Add("Authorization","bearer "+ " " + "$($Token.AccessToken)")
@@ -90,48 +90,48 @@ New-AzVm `
         Write-Error -Message $_.Exception
     }
 
-Write-Output "Compile configuration" -verbose
-Start-AzAutomationDscCompilationJob -ConfigurationName "SetupServer" -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountDscName
-$CompilationJobs = Get-AzAutomationDscCompilationJob -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountDscName
+Write-Output  "Compile configuration" -verbose
+Start-AzAutomationDscCompilationJob -ConfigurationName "SetupServer" -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountDscName | Out-Null
+$CompilationJobs = Get-AzAutomationDscCompilationJob -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountDscName | Out-Null
 $JobStream = $CompilationJobs[0] | Get-AzAutomationDscCompilationJobOutput -Stream "Any"
 
 Start-Sleep -Seconds 100
 
-Write-Output "Register DSC node" -verbose
-Register-AzAutomationDscNode -AutomationAccountName $AccountDscName -AzureVMName $VMDscName -ResourceGroupName $ResourceGroupName -NodeConfigurationName "SetupServer.localhost"
-$Node = Get-AzAutomationDscNode -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountDscName -ConfigurationName "SetupServer.localhost"
+Write-Output  "Register DSC node" -verbose
+Register-AzAutomationDscNode -AutomationAccountName $AccountDscName -AzureVMName $VMDscName -ResourceGroupName $ResourceGroupName -NodeConfigurationName "SetupServer.localhost" | Out-Null
+($Node = Get-AzAutomationDscNode -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountDscName -ConfigurationName "SetupServer.localhost")  | Out-Null
 if($Node.Name -like $VMDscName) {
-    Write-Output "Node registered successfully"
+    Write-Output  "Node registered successfully"
 } 
 else{
-    Write-Error "Node registration failed"
+    Write-Error "DSC Validation :: Node registration failed"
 }
 
 Start-Sleep -Seconds 100
 
-Write-Output "Get node report" -verbose
-$NodeReport = Get-AzAutomationDscNodeReport -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountDscName -NodeId $Node.Id -Latest
+Write-Output  "Get node report" -verbose
+($NodeReport = Get-AzAutomationDscNodeReport -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountDscName -NodeId $Node.Id -Latest) | Out-Null
 $NodeReport.Status -like "Compliant"
 if($NodeReport.Status -like "Compliant") {
-    Write-Output "Node status compliant"
+    Write-Output  "Node status compliant"
 } 
 else{
-    Write-Error "Node not in compliant state"
+    Write-Error "DSC Validation :: Node not in compliant state"
 }
 
-Write-Output "Unregister node" -verbose
-Unregister-AzAutomationDscNode -AutomationAccountName $AccountDscName -ResourceGroupName $ResourceGroupName -Id $Node.Id -Force
+Write-Output  "Unregister node" -verbose
+Unregister-AzAutomationDscNode -AutomationAccountName $AccountDscName -ResourceGroupName $ResourceGroupName -Id $Node.Id -Force | Out-Null
 
-Write-Output "Delete VM" -verbose
-Remove-AzVM -ResourceGroupName $ResourceGroupName -Name $VMDscName -Force
+Write-Output  "Delete VM" -verbose
+Remove-AzVM -ResourceGroupName $ResourceGroupName -Name $VMDscName -Force | Out-Null
 
-Write-Output "Remove node configuration" -verbose
-Remove-AzAutomationDscNodeConfiguration -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountDscName -Name "SetupServer.localhost" -Force
+Write-Output  "Remove node configuration" -verbose
+Remove-AzAutomationDscNodeConfiguration -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountDscName -Name "SetupServer.localhost" -Force | Out-Null
 
-Write-Output "Remove configuration" -verbose
-Remove-AzAutomationDscConfiguration -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountDscName -Name "SetupServer" -Force
+Write-Output  "Remove configuration" -verbose
+Remove-AzAutomationDscConfiguration -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountDscName -Name "SetupServer" -Force | Out-Null
 
 
-Write-Output "DSC Scenarios Verified"
+Write-Output "DSC Validation :: DSC Scenarios Validation Completed"
 
 

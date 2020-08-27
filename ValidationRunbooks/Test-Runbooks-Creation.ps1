@@ -10,6 +10,9 @@ Param(
     [Parameter(Mandatory = $false)]
     [string] $ResourceGroupName = "RunnerRG"
 )
+
+$ErrorActionPreference = "Stop"
+
 $powershellRunbookName = "ps-job-test-rb"
 $python2RunbookName = "py2-job-test-rb"
 $powershellWorkflowRunbookName = "pswf-job-test-rb"
@@ -19,7 +22,7 @@ $connectionName = "AzureRunAsConnection"
 try
 {
     $servicePrincipalConnection = Get-AutomationConnection -Name $connectionName      
-    Write-Output "Logging in to Azure..." -verbose
+    Write-Verbose "Logging in to Azure..." -verbose
     Connect-AzAccount `
         -ServicePrincipal `
         -TenantId $servicePrincipalConnection.TenantId `

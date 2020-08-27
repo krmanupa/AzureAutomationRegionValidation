@@ -117,7 +117,7 @@ try
         -TenantId $servicePrincipalConnection.TenantId `
         -ApplicationId $servicePrincipalConnection.ApplicationId `
         -CertificateThumbprint $servicePrincipalConnection.CertificateThumbprint `
-        -Environment $Environment
+        -Environment $Environment | Out-Null
 }
 catch {
     if (!$servicePrincipalConnection)
@@ -134,10 +134,9 @@ if($IsEnableCMK -eq $true){
     #add the account's service principal in the key vault to provide account the access to the KeyVault with all the required permissions
     # generate a key to apply that to the automation account as CMK.
     EnableCMK -UriStart "management.azure.com" -SubId $SubId -ResourceGroupName $ResourceGroupName -AutomationAccName $AccountName
-    Write-Output "Enabled CMK"
+    Write-Output "CMK Validation :: Enable CMK Successful"
 }
 else{
     DisableCMK -UriStart "management.azure.com" -SubId $SubId -ResourceGroupName $ResourceGroupName -AutomationAccName $AccountName
-    Write-Output "Disabled CMK"
+    Write-Output "CMK Validation :: Disabl CMK Successful"
 }
-

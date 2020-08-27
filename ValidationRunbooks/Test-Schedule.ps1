@@ -20,6 +20,7 @@ Param(
     #Import-Module Az.Resources
     #Import-Module Az.Automation
     
+    $ErrorActionPreference = "Stop"
     
     $guid = New-Guid
     $ScheduleName = $ScheduleName + "-" + $guid.ToString()
@@ -30,13 +31,13 @@ Param(
     try
     {
     $servicePrincipalConnection = Get-AutomationConnection -Name $connectionName      
-    Write-Verbose "Logging in to Azure..." -verbose
+    Write-Output  "Logging in to Azure..." -verbose
     Connect-AzAccount `
         -ServicePrincipal `
         -TenantId $servicePrincipalConnection.TenantId `
         -ApplicationId $servicePrincipalConnection.ApplicationId `
         -CertificateThumbprint $servicePrincipalConnection.CertificateThumbprint `
-        -Environment $Environment
+        -Environment $Environment | Out-Null
     }
     catch {
     if (!$servicePrincipalConnection)
@@ -49,19 +50,19 @@ Param(
     }
     }
     
-    # Write-Verbose "Create schedule" 
+    # Write-Output  "Create schedule" 
     $TimeZone = ([System.TimeZoneInfo]::Local).Id
     $StartTime = (Get-Date).AddMinutes(6)
-    New-AzAutomationSchedule -AutomationAccountName $AccountName -Name $ScheduleName -StartTime $StartTime -OneTime -ResourceGroupName $ResourceGroupName -TimeZone $TimeZone 
+    New-AzAutomationSchedule -AutomationAccountName $AccountName -Name $ScheduleName -StartTime $StartTime -OneTime -ResourceGroupName $ResourceGroupName -TimeZone $TimeZone | Out-Null 
     
-    # Write-Verbose "Create runbook" 
-    New-AzAutomationRunbook -AutomationAccountName $AccountName -Name $RunbookName -ResourceGroupName $ResourceGroupName -Type "PowerShell"
-    # Write-Verbose "Get auth token" 
+    # Write-Output  "Create runbook" 
+    New-AzAutomationRunbook -AutomationAccountName $AccountName -Name $RunbookName -ResourceGroupName $ResourceGroupName -Type "PowerShell" | Out-Null
+    # Write-Output  "Get auth token" 
     $currentAzureContext = Get-AzContext
     $azureRmProfile = [Microsoft.Azure.Commands.Common.Authentication.Abstractions.AzureRmProfileProvider]::Instance.Profile
     $profileClient = New-Object Microsoft.Azure.Commands.ResourceManager.Common.RMProfileClient($azureRmProfile)
     $Token = $profileClient.AcquireAccessToken($currentAzureContext.Tenant.TenantId)
-    # Write-Verbose "Draft runbook" 
+    # Write-Output  "Draft runbook" 
     try{
         $Headers = @{}
         $Headers.Add("Authorization","bearer "+ " " + "$($Token.AccessToken)")
@@ -73,18 +74,18 @@ Param(
     catch{
         Write-Error -Message $_.Exception
     }    
-    # Write-Verbose "Publish runbook" 
-    Publish-AzAutomationRunbook -AutomationAccountName $AccountName -Name $RunbookName -ResourceGroupName $ResourceGroupName
+    # Write-Output  "Publish runbook" 
+    Publish-AzAutomationRunbook -AutomationAccountName $AccountName -Name $RunbookName -ResourceGroupName $ResourceGroupName | Out-Null
     
     
-    # Write-Verbose "Register runbook with schedule" 
-    Register-AzAutomationScheduledRunbook -AutomationAccountName $AccountName -Name $RunbookName -ScheduleName $ScheduleName -ResourceGroupName $ResourceGroupName -RunOn $WorkerGroup
+    # Write-Output  "Register runbook with schedule" 
+    Register-AzAutomationScheduledRunbook -AutomationAccountName $AccountName -Name $RunbookName -ScheduleName $ScheduleName  -ResourceGroupName $ResourceGroupName -RunOn $WorkerGroup | Out-Null
     
     #Try getting the schedule
-    $schedule = Get-AzAutomationSchedule -AutomationAccountName $AccountName -Name $ScheduleName -ResourceGroupName $ResourceGroupName
+    ($schedule = Get-AzAutomationSchedule -AutomationAccountName $AccountName -Name $ScheduleName -ResourceGroupName $ResourceGroupName) | Out-Null
     
     if($schedule.Name -like $ScheduleName){
-        Write-Verbose "Schedule retrieved successfully"
+        Write-Output  "Schedule retrieved successfully"
     }
     else{
         Write-Error "Schedule retrieval failed"
@@ -93,32 +94,32 @@ Param(
     Start-Sleep -Seconds 400
     $Jobs = Get-AzAutomationJob -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName -RunbookName $RunbookName
     $JobId = $Jobs[0].JobId
-    $JobOutput = Get-AzAutomationJobOutput -AutomationAccountName $AccountName -Id $JobId -ResourceGroupName $ResourceGroupName -Stream "Output"
+    ($JobOutput = Get-AzAutomationJobOutput -AutomationAccountName $AccountName -Id $JobId -ResourceGroupName $ResourceGroupName -Stream "Output") | Out-Null
     $Output = $JobOutput.Summary
     if($Output -like "TestingScheduler") { 
-        Write-Verbose "Scheduled job ran successfully" 
+        Write-Output  "Scheduled job ran successfully" 
     } 
     else{
         Write-Error "Scheduled job couldn't complete"
     }
     
     $DescriptionToBeUpdated = "Automation Schedule Updated" 
-    Set-AzAutomationSchedule -AutomationAccountName $AccountName -Name $ScheduleName -Description $DescriptionToBeUpdated -ResourceGroupName $ResourceGroupName
+    Set-AzAutomationSchedule -AutomationAccountName $AccountName -Name $ScheduleName -Description $DescriptionToBeUpdated -ResourceGroupName $ResourceGroupName | Out-Null
     #Try getting the schedule
-    $schedule = Get-AzAutomationSchedule -AutomationAccountName $AccountName -Name $ScheduleName -ResourceGroupName $ResourceGroupName
+    ($schedule = Get-AzAutomationSchedule -AutomationAccountName $AccountName -Name $ScheduleName -ResourceGroupName $ResourceGroupName) | Out-Null
     
     if($schedule.Description -like $DescriptionToBeUpdated){
-        Write-Verbose "Schedule updated successfully"
+        Write-Output  "Schedule updated successfully"
     }
     else{
         Write-Error "Schedule update failed"
     }
     
-    # Write-Verbose "Delete runbook" 
-    Remove-AzAutomationRunbook -AutomationAccountName $AccountName -Name $RunbookName -ResourceGroupName $ResourceGroupName -Force
-    # Write-Verbose "Delete schedule" 
-    Remove-AzAutomationSchedule -AutomationAccountName $AccountName -Name $ScheduleName -ResourceGroupName $ResourceGroupName -Force
+    # Write-Output  "Delete runbook" 
+    Remove-AzAutomationRunbook -AutomationAccountName $AccountName -Name $RunbookName -ResourceGroupName $ResourceGroupName -Force | Out-Null
+    # Write-Output  "Delete schedule" 
+    Remove-AzAutomationSchedule -AutomationAccountName $AccountName -Name $ScheduleName -ResourceGroupName $ResourceGroupName -Force | Out-Null
     
-    Write-Output "Schedule Scenario Verified"
+    Write-Output "Job Schedule Scenario Validation Completed"
     
     

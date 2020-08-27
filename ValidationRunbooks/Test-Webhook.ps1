@@ -18,6 +18,8 @@ Param(
     #Import-Module Az.Resources
     #Import-Module Az.Automation
     
+    $ErrorActionPreference = "Stop"
+
     $guid = New-Guid
     $WebhookName = $WebhookName + "-" + $guid.ToString()
     
@@ -32,7 +34,7 @@ Param(
         -TenantId $servicePrincipalConnection.TenantId `
         -ApplicationId $servicePrincipalConnection.ApplicationId `
         -CertificateThumbprint $servicePrincipalConnection.CertificateThumbprint `
-        -Environment $Environment
+        -Environment $Environment | Out-Null
     }
     catch {
     if (!$servicePrincipalConnection)
@@ -46,12 +48,12 @@ Param(
     }
     
     # Write-Output "Create webhook" 
-    $Webhook = New-AzAutomationWebhook -Name $WebhookName -IsEnabled $True -ExpiryTime $([datetime]::now.AddYears(1)) -RunbookName $RunbookName -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountName -Force -RunOn $WorkerGroup
+    ($Webhook = New-AzAutomationWebhook -Name $WebhookName -IsEnabled $True -ExpiryTime $([datetime]::now.AddYears(1)) -RunbookName $RunbookName -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountName -Force -RunOn $WorkerGroup) | Out-Null
     if($Webhook.Name -like $WebhookName) {
         Write-Output "Webhook created successfully"
     } 
     else{
-        Write-Error "Webhook creation failed"
+        Write-Error "Webhook :: Webhook creation failed"
     }
     
     # Write-Output "Invoke webhook" 
@@ -60,43 +62,43 @@ Param(
         $Job = $JobDetails.Content | ConvertFrom-Json
         $JobId = $Job.JobIds | Out-String
         Start-Sleep -Seconds 60
-        $JobOutput = Get-AzAutomationJobOutput -AutomationAccountName $AccountName -Id $JobId -ResourceGroupName $ResourceGroupName -Stream "Output"
+        ($JobOutput = Get-AzAutomationJobOutput -AutomationAccountName $AccountName -Id $JobId -ResourceGroupName $ResourceGroupName -Stream "Output") | Out-Null
         $Output = $JobOutput.Summary
         if($Output -like "Hello") { 
             Write-Output "Webhook invoked successfully" 
         } 
         else{
-            Write-Error "Job invoked through webhook couldn't complete"
+            Write-Error "Webhook :: Job invoked through webhook couldn't complete"
         }
     }
     catch{
-        Write-Error "Webhook invocation failed"
+        Write-Error "Webhook :: Webhook invocation failed"
         Write-Error -Message $_.Exception
     }
     
     #Try getting the webhook 
-    $Webhook = Get-AzAutomationWebhook -RunbookName $RunbookName -ResourceGroup $ResourceGroupName -AutomationAccountName $AccountName
+    ($Webhook = Get-AzAutomationWebhook -RunbookName $RunbookName -ResourceGroup $ResourceGroupName -AutomationAccountName $AccountName) | Out-Null
     if($Webhook.Name -like $WebhookName) {
         Write-Output "Webhook Get successful"
     } 
     else{
-        Write-Error "Webhook Get failed"
+        Write-Error "Webhook :: Webhook Get failed"
     }
     
     #update the webhook
-    Set-AzAutomationWebhook -Name $WebhookName -IsEnabled $False -ResourceGroup $ResourceGroupName -AutomationAccountName $AccountName
+    (Set-AzAutomationWebhook -Name $WebhookName -IsEnabled $False -ResourceGroup $ResourceGroupName -AutomationAccountName $AccountName) | Out-Null
     #check if the webhook is disabled
-    $Webhook = Get-AzAutomationWebhook -RunbookName $RunbookName -ResourceGroup $ResourceGroupName -AutomationAccountName $AccountName
+    ($Webhook = Get-AzAutomationWebhook -RunbookName $RunbookName -ResourceGroup $ResourceGroupName -AutomationAccountName $AccountName) | Out-Null
     if($Webhook.IsEnabled -eq $false) {
         Write-Output "Webhook updated successfully"
     } 
     else{
-        Write-Error "Webhook update failed"
+        Write-Error "Webhook :: Update failed"
     }
     
     # Write-Output "Delete webhook" 
-    Remove-AzAutomationWebhook -Name $WebhookName -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountName 
+    Remove-AzAutomationWebhook -Name $WebhookName -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountName | Out-Null
     
-    Write-Output "Webhook Scenario Verified"
+    Write-Output "Webhook Scenario Validation Completed"
     
     

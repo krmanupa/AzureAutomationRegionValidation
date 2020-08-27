@@ -20,6 +20,7 @@ Param(
 #Import-Module Az.Resources
 #Import-Module Az.Automation
 
+$ErrorActionPreference = "Stop"
 
 $guid = New-Guid
 $AccountName = $AccountName + $guid.ToString()
@@ -29,7 +30,7 @@ $connectionName = "AzureRunAsConnection"
 try
 {
     $servicePrincipalConnection = Get-AutomationConnection -Name $connectionName      
-    Write-Output "Logging in to Azure..." -verbose
+    Write-Verbose "Logging in to Azure..." -verbose
     Connect-AzAccount `
         -ServicePrincipal `
         -TenantId $servicePrincipalConnection.TenantId `
