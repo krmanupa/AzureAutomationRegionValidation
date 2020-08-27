@@ -6,20 +6,20 @@ Param(
     [Parameter(Mandatory = $true)]
     [string] $ResourceGroupName
 )
-
+$ErrorActionPreference = $true
 
 # Connect using RunAs account connection
 $connectionName = "AzureRunAsConnection"
 try
 {
     $servicePrincipalConnection = Get-AutomationConnection -Name $connectionName      
-    Write-Output "Logging in to Azure..." -verbose
+    Write-Verbose "Logging in to Azure..." -verbose
     Connect-AzAccount `
         -ServicePrincipal `
         -TenantId $servicePrincipalConnection.TenantId `
         -ApplicationId $servicePrincipalConnection.ApplicationId `
         -CertificateThumbprint $servicePrincipalConnection.CertificateThumbprint `
-        -Environment "AzureCloud"
+        -Environment $Environment | Out-Null 
 }
 catch {
     if (!$servicePrincipalConnection)
@@ -38,21 +38,21 @@ function CheckSyncJob {
         $runbookNameOnTheGit
     )
     Write-Output "Starting Sync job on $repoName"
-    $syncJob = Start-AzAutomationSourceControlSyncJob -ResourceGroupName $ResourceGroupName `
+    ($syncJob = Start-AzAutomationSourceControlSyncJob -ResourceGroupName $ResourceGroupName `
                                                     -AutomationAccountName $AccountName `
-                                                    -Name $repoName
+                                                    -Name $repoName ) | Out-Null
 
-    $jobId = $syncJob.JobId
+    $jobId = $syncJob.SourceControlSyncJobId
     Write-Output "Sync JobId : $jobId"
     Start-Sleep -Seconds 300
 
-    $runbookInTheAA = Get-AzAutomationRunbook -Name $runbookNameOnTheGit -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName
+   ( $runbookInTheAA = Get-AzAutomationRunbook -Name $runbookNameOnTheGit -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName) | Out-Null
 
     if($runbookInTheAA.Name -eq $runbookNameOnTheGit){
-        Write-Output "Sync job succeeded"
+        Write-Output "Sync job succeeded on $repoName"
     }
     else{
-        Write-Error "Sync job failed"
+        Write-Error "Sync job failed on $repoName"
     }
 }
 
@@ -64,19 +64,39 @@ function VerifyUpdateOfSC {
     Update-AzAutomationSourceControl -ResourceGroupName $ResourceGroupName `
                                       -AutomationAccountName $AccountName `
                                       -Name $repoName `
-                                      -PublishRunbook $false
+                                      -PublishRunbook $false | Out-Null
     
     Start-Sleep -s 60
-    $gitSourceControl = Get-AzAutomationSourceControl   -ResourceGroupName $ResourceGroupName `
+    ($gitSourceControl = Get-AzAutomationSourceControl   -ResourceGroupName $ResourceGroupName `
                                                         -AutomationAccountName $AccountName `
-                                                        -Name $repoName 
+                                                        -Name $repoName ) | Out-Null
     
     if($gitSourceControl.PublishRunbook -eq $false){
-        Write-Output "GitHub Repo - Source Control Update Successful"
+        Write-Output "$repoName - Source Control Update Successful"
     }
     else{
-        Write-Error "GitHub Repo - Source Control Update Failed"
+        Write-Error "$repoName - Source Control Update Failed"
     }
+}
+
+function VerifyDeleteSC {
+    param (
+        $scName
+    )
+    # Delete the source control
+    Remove-AzAutomationSourceControl -ResourceGroupName $ResourceGroupName `
+                                    -AutomationAccountName $AccountName `
+                                    -Name $scName   | Out-Null
+
+    Start-Sleep -s 60
+    ($sourceControlsInTheAcc = Get-AzAutomationSourceControl -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountName) | Out-Null
+    foreach ($sc in $sourceControlsInTheAcc) {
+        if($sc.Name -eq $gitSourceControl){
+            Write-Error "$scName - Delete failed"
+            return
+        }
+    }
+    Write-Output "$scName - Delete Successful"
 }
 
 function TestSourceControlForGitRepo {
@@ -92,11 +112,11 @@ function TestSourceControlForGitRepo {
                                            -Branch "master" `
                                            -FolderPath "/" `
                                            -AccessToken $githubAccessTokenStr `
-                                           -EnableAutoSync
+                                           -EnableAutoSync | Out-Null
     Start-Sleep -s 60                     
-    $gitSourceControl = Get-AzAutomationSourceControl   -ResourceGroupName $ResourceGroupName `
+    ($gitSourceControl = Get-AzAutomationSourceControl   -ResourceGroupName $ResourceGroupName `
                                                         -AutomationAccountName $AccountName `
-                                                        -Name $githubRepoName 
+                                                        -Name $githubRepoName ) | Out-Null
     
     if($gitSourceControl.FolderPath -like "/"){
         Write-Output "GitHub Repo - Source Control Creation Successful"
@@ -113,22 +133,7 @@ function TestSourceControlForGitRepo {
     VerifyUpdateOfSC -repoName $githubRepoName   
     
     # Delete the source control
-    Remove-AzAutomationSourceControl -ResourceGroupName $ResourceGroupName `
-                                              -AutomationAccountName $AccountName `
-                                              -Name $githubRepoName `
-    
-    Start-Sleep -s 60
-    $gitSourceControl = Get-AzAutomationSourceControl   -ResourceGroupName $ResourceGroupName `
-                                                        -AutomationAccountName $AccountName `
-                                                        -Name $githubRepoName
-    
-    if($null -eq $gitSourceControl){
-        Write-Output "GitHub Repo - Deleted SourceControl successfully."
-    }
-    else{
-        Write-Error "GitHub Repo - Delete SourceControl failed."
-    }
-    
+    VerifyDeleteSC -scName $githubRepoName
 }
 
 
@@ -145,12 +150,12 @@ function TestSourceControlForVsoGitUrlType1 {
     -Branch "master" `
     -FolderPath "/Runbooks/PowershellScripts" `
     -AccessToken $allaccessToken2Str `
-    -EnableAutoSync 
+    -EnableAutoSync | Out-Null
 
     Start-Sleep -s 60                     
-    $gitSourceControl = Get-AzAutomationSourceControl   -ResourceGroupName $ResourceGroupName `
+    ($gitSourceControl = Get-AzAutomationSourceControl   -ResourceGroupName $ResourceGroupName `
                                                         -AutomationAccountName $AccountName `
-                                                        -Name $vsoGitName_Type1 
+                                                        -Name $vsoGitName_Type1 ) | Out-Null
     
     if($gitSourceControl.FolderPath -like "/Runbooks/PowershellScripts"){
         Write-Output "VSO Git Type1 - Source Control Creation Successful"
@@ -166,19 +171,8 @@ function TestSourceControlForVsoGitUrlType1 {
     # Update the source control
     VerifyUpdateOfSC -repoName $vsoGitName_Type1  
     
-    # Delete the source control
-    Remove-AzAutomationSourceControl -ResourceGroupName $ResourceGroupName `
-                                              -AutomationAccountName $AccountName `
-                                              -Name $vsoGitName_Type1   
-    
-    Start-Sleep -s 60
-    if($null -eq $gitSourceControl){
-        Write-Output "VsoGit-1 Repo - Deleted SourceControl successfully."
-    }
-    else{
-        Write-Error "VsoGit-1 Repo - Delete SourceControl failed."
-    }
-
+    #Delete the source control
+    VerifyDeleteSC -scName $vsoGitName_Type1
 }
 
 function TestSourceControlForVsoGitUrlType2 {
@@ -194,13 +188,13 @@ function TestSourceControlForVsoGitUrlType2 {
     -Branch "master" `
     -FolderPath "/" `
     -AccessToken $omairdocaccessTokenStr `
-    -EnableAutoSync
+    -EnableAutoSync | Out-Null
 
     
     Start-Sleep -s 60                     
-    $gitSourceControl = Get-AzAutomationSourceControl   -ResourceGroupName $ResourceGroupName `
+    ($gitSourceControl = Get-AzAutomationSourceControl   -ResourceGroupName $ResourceGroupName `
                                                         -AutomationAccountName $AccountName `
-                                                        -Name $vsoGitName_Type2 
+                                                        -Name $vsoGitName_Type2 ) | Out-Null
     
     if($gitSourceControl.FolderPath -like "/"){
         Write-Output "VSO Git Type2 - Source Control Creation Successful"
@@ -217,17 +211,7 @@ function TestSourceControlForVsoGitUrlType2 {
     VerifyUpdateOfSC -repoName $vsoGitName_Type2   
     
     # Delete the source control
-    Remove-AzAutomationSourceControl -ResourceGroupName $ResourceGroupName `
-                                              -AutomationAccountName $AccountName `
-                                              -Name $vsoGitName_Type2   
-    
-    Start-Sleep -s 60
-    if($null -eq $gitSourceControl){
-        Write-Output "VsoGit-2 Repo - Deleted SourceControl successfully."
-    }
-    else{
-        Write-Error "VsoGit-2 Repo - Delete SourceControl failed."
-    }=
+    VerifyDeleteSC -scName $vsoGitName_Type2
 }
 
 function TestSourceControlForVsoGitUrlType3 {
@@ -243,13 +227,13 @@ function TestSourceControlForVsoGitUrlType3 {
     -Branch "master" `
     -FolderPath "/PSScripts" `
     -AccessToken $allaccessToken2Str `
-    -EnableAutoSync
+    -EnableAutoSync | Out-Null
 
     
     Start-Sleep -s 60                     
-    $gitSourceControl = Get-AzAutomationSourceControl   -ResourceGroupName $ResourceGroupName `
+    ($gitSourceControl = Get-AzAutomationSourceControl   -ResourceGroupName $ResourceGroupName `
                                                         -AutomationAccountName $AccountName `
-                                                        -Name $vsoGitName_Type3 
+                                                        -Name $vsoGitName_Type3 ) | Out-Null
     
     if($gitSourceControl.FolderPath -like "/PSScripts"){
         Write-Output "VSO Git Type3 - Source Control Creation Successful"
@@ -266,17 +250,7 @@ function TestSourceControlForVsoGitUrlType3 {
     VerifyUpdateOfSC -repoName $vsoGitName_Type3   
     
     # Delete the source control
-    Remove-AzAutomationSourceControl -ResourceGroupName $ResourceGroupName `
-                                              -AutomationAccountName $AccountName `
-                                              -Name $vsoGitName_Type3   
-    
-    Start-Sleep -s 60
-    if($null -eq $gitSourceControl){
-        Write-Output "VsoGit-3 Repo - Deleted SourceControl successfully."
-    }
-    else{
-        Write-Error "VsoGit-3 Repo - Delete SourceControl failed."
-    }
+    VerifyDeleteSC -scName $vsoGitName_Type3
 }
 function TestSourceControlVsoGitRepo {
     TestSourceControlForVsoGitUrlType1
@@ -285,7 +259,10 @@ function TestSourceControlVsoGitRepo {
 }
 
 TestSourceControlForGitRepo
+Write-Output "GitHub Repo Type SC Validation Completed"
+
 TestSourceControlVsoGitRepo
+Write-Output "VSOGit Repo Type SC Validation Completed"
 
 Write-Output "Source Control Verified"
 
