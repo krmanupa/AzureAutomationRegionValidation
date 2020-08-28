@@ -3,3 +3,20 @@
 2. UtilityRunbooks contains runbooks to verify scripts execution on Automation Account
 3. ValidationRunbooks contains runbooks to verify various Use Cases.
 4. VMExtensionScripts contains scripts to be executed on the newly created VMs for Hybrid worker Scenarios.
+
+
+Gaps:
+Webhook:
+1. Disabled Webhook invocation
+2. Parametrized invocation
+Schedule:
+1. Disabled Check
+2. Montly, Hourly, Daily, Advance Schedule(Month days, Week days) - Cases need to be covered (Invoke the immediate run and verify next run)
+Private Link:
+1. Is Enabled - Public network access flag (false - webhook must fail unless invoked by VNET)
+Accounts:
+1. Move to another sub
+
+
+DSC:
+1. Sensitive?

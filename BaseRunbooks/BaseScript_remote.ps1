@@ -8,22 +8,16 @@ workflow BaseScript_remote{
     [string] $ResourceGroupName = "krmanupa-test-auto",
     [Parameter(Mandatory = $false)]
     [string] $AccountName = "krmanupa-base-aa",
-    [Parameter(Mandatory = $false)]
-    [string] $WorkspaceName = "Test-LAWorkspace",
-    [Parameter(Mandatory = $false)]
-    [string] $RunbookPSName = "ps-job-test",
-    [Parameter(Mandatory = $false)]
-    [string] $RunbookPSWFName = "psWF-job-test",
-    [Parameter(Mandatory = $false)]
-    [string] $RunbookPython2Name = "py2-job-test",
-    [Parameter(Mandatory=$false)]
-    [string]$AssetVerificationRunbookPSName = "AssetVerificationRunbook",
     [Parameter (Mandatory= $false)]
-    [string] $NewResourceGroupName = "TestRG"
+    [string] $NewResourceGroupName = "TestRG",
+    [Parameter (Mandatory=$false)]
+    [string] $guid
     )
 
-$guid_val = [guid]::NewGuid()
-$guid = $guid_val.ToString()
+if($guid -eq ""){
+    $guid_val = [guid]::NewGuid()
+    $guid = $guid_val.ToString()
+}
 
 $vmName = "Test-VM-" + $guid.SubString(0,4) 
 $workerGroupName = "test-auto-create"

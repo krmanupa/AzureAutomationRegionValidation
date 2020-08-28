@@ -1,2 +1,185 @@
 # This will create the Automation Account in the region specified and imports all the required modules and runbooks to that account.
 # Runs that runbook on the new account.
+# Pre-Requsites : 
+Param(
+    [Parameter(Mandatory = $false)]
+    [string] $location = "West Central US",  
+    [Parameter(Mandatory = $false)]
+    [string] $Environment = "AzureCloud",
+    [Parameter(Mandatory = $false)]
+    [string] $SubId = "cd45f23b-b832-4fa4-a434-1bf7e6f14a5a"
+)
+
+# Connect-AzAccount -Environment $Environment
+function CreateResourceGroupToWorkOn {
+    param (
+        $resourceGroupName
+    )
+    #HardCoded ResourceGroups
+    New-AzResourceGroup -Name $resourceGroupName -Location $location | Out-Null
+    return $resourceGroupToWorkOn
+}
+
+function CreateResourceGroupToMoveAccsTo {
+    param (
+        $resourceGroupName
+    )
+    New-AzResourceGroup -Name $resourceGroupName -Location $location | Out-Null
+    return $resourceGroupToMoveAccs
+}
+
+function CreateAutomationAccount {
+    param (
+        $accName,
+        $resourceGroupName
+    )
+    #HardCoded Account
+    New-AzAutomationAccount -Name $accName -Location $location -ResourceGroupName $resourceGroupName | Out-Null
+    return $automationAccountName
+}
+
+function ImportRequiredModules {
+    param (
+        $accName,
+        $resourceGroupName,
+        $orderedModuleUris
+    )
+    Write-Output $orderedModuleUris
+    $orderedModuleUris.Keys | % {
+        $moduleName = $_
+        
+        Write-Output "uploading $moduleName"
+        Write-Output "Value name " $orderedModuleUris.$moduleName
+
+        New-AzAutomationModule -AutomationAccountName $accName -ResourceGroupName $resourceGroupName -Name $moduleName -ContentLinkUri $orderedModuleUris.$moduleName
+        Start-Sleep -s 100
+    }
+}
+
+function ImportRunbooksGivenTheFolder {
+    param (
+        $accName,
+        $resourceGroupName,
+        $folderPath,
+        $isPSWFRbFolder = $false
+    )
+
+    if($isPSWFRbFolder -eq $true){
+        Get-ChildItem $folderPath -Filter *.ps1 |
+        Foreach-Object{
+            $fileNameWithExtension = $_.Name
+            $fileName =  $fileNameWithExtension.Split('.')[0]
+            $fullPath = "$folderPath\$fileNameWithExtension"
+            Import-AzAutomationRunbook -Name $fileName -Path $fullPath  -ResourceGroupName $resourceGroupName -AutomationAccountName $accName -Type PowerShellWorkflow -Published
+        }
+    }
+
+    else{
+        Write-Output "$folderPath"
+        Get-ChildItem $folderPath -Filter *.ps1 |
+        Foreach-Object{
+            $fileNameWithExtension = $_.Name
+            $fileName =  $fileNameWithExtension.Split('.')[0]
+            $fullPath = "$folderPath\$fileNameWithExtension"
+            Import-AzAutomationRunbook -Name $fileName -Path $fullPath  -ResourceGroupName $resourceGroupName -AutomationAccountName $accName -Type PowerShell -Published
+        }
+
+        Get-ChildItem $folderPath -Filter *.py |
+        Foreach-Object{
+            $fileNameWithExtension = $_.Name
+            $fileName =  $fileNameWithExtension.Split('.')[0]
+            $fullPath = "$folderPath\$fileNameWithExtension"
+            Import-AzAutomationRunbook -Name $fileName -Path $fullPath  -ResourceGroupName $resourceGroupName -AutomationAccountName $accName -Type Python2 -Published
+        }
+    }
+}
+
+function ImportRequiredRunbooks {
+    param (
+        $accName,
+        $resourceGroupName
+    )
+
+    ImportRunbooksGivenTheFolder -accName $accName -resourceGroupName $resourceGroupName -folderPath "..\UtilityRunbooks"
+    ImportRunbooksGivenTheFolder -accName $accName -resourceGroupName $resourceGroupName -folderPath "..\ValidationRunbooks"
+    ImportRunbooksGivenTheFolder -accName $accName -resourceGroupName $resourceGroupName -folderPath "..\UtilityRunbooks\powershellWFRunbooks" -isPSWFRbFolder $true
+    ImportRunbooksGivenTheFolder -accName $accName -resourceGroupName $resourceGroupName -folderPath "..\ValidationRunbooks\powershellWorkflowScripts" -isPSWFRbFolder $true
+    ImportRunbooksGivenTheFolder -accName $accName -resourceGroupName $resourceGroupName -folderPath "..\BaseRunbooks"
+}
+
+function CreateStorageAccount {
+    param (
+        $storageAccName,
+        $resourceGroupName,
+        $location
+    )
+
+    New-AzStorageAccount -ResourceGroupName $resourceGroupName -AccountName $storageAccName -Location $location -SkuName Standard_GRS
+    Start-Sleep -s 120
+    #Create File Share
+    $ctx=(Get-AzStorageAccount -ResourceGroupName $resourceGroupName -Name $storageAccName).Context  
+    ## Creates an file share  
+    $fileShareName = "testfileshare"
+    New-AzStorageShare -Context $ctx -Name $fileShareName 
+
+    # Start-Sleep -s 120
+    $ctx=(Get-AzStorageAccount -ResourceGroupName $resourceGroupName -Name $storageAccName).Context 
+    $sasToken = New-AzStorageAccountSASToken -Context $ctx -Service Blob,File,Table,Queue -ResourceType Service,Container,Object -Permission "racwdlup"
+    Write-Output "SAS Token : $sasToken"
+
+    #upload the files to the fileshare
+    
+    $fileShareName = "testfileshare"
+    $folderPath = "..\Modules"
+    Get-ChildItem $folderPath -Filter *.zip |
+    Foreach-Object{
+        Write-Output "Uploading  " + $_.Name
+        Set-AzStorageFileContent -ShareName $fileShareName -Context $ctx -Source $_.FullName -Force
+    }
+    Start-Sleep -s 30
+    
+    $orderedUris =  New-Object 'system.collections.generic.dictionary[string,string]'
+    $orderOfModules = "az.accounts", "az.resources", "az.compute", "az.automation", "az.operationalinsights"
+    Write-Output "$orderOfModules"
+    Foreach ($module in $orderOfModules) {
+        Get-AzStorageFile -ShareName $fileShareName -Context $ctx | 
+        Foreach-Object {
+            if($_.Name.StartsWith($module)){
+                Write-Output $_.Name
+                $absoluteUri = $_.CloudFile.Uri.AbsoluteUri
+                $uriWithSAS = $absoluteUri+$sasToken
+                Write-Output "URI WITH SAS : $uriWithSAS" 
+                $orderedUris.Add($module, $uriWithSAS)
+            }
+        }
+    }
+    return $orderedUris
+}
+
+Select-AzSubscription -SubscriptionId $SubId
+
+$guid_val = [guid]::NewGuid()
+$guid = $guid_val.ToString()
+
+$resourceGroupToWorkOn = "region_autovalidate_" + $guid.SubString(0,4)
+CreateResourceGroupToWorkOn -resourceGroupName $resourceGroupToWorkOn
+Write-Output "Resource Group - 1 : $resourceGroupName"
+
+
+$resourceGroupToMoveAccs = "region_autovalidate_moveto_" + $guid.SubString(0,4)
+CreateResourceGroupToMoveAccsTo -resourceGroupName $resourceGroupToMoveAccs
+Write-Output "Resource Group - 2 : $resourceGroupToMoveAccs"
+
+$automationAccountName = "region_auto_validate_aa_" + $guid.SubString(0,4) 
+CreateAutomationAccount -resourceGroupName $resourceGroupToWorkOn -accName $automationAccountName
+Write-Output "Automation Account : $automationAccountName"
+
+ImportRequiredRunbooks -accName $automationAccountName -resourceGroupName $resourceGroupToWorkOn
+ImportRequiredModules -accName $automationAccountName -resourceGroupName $resourceGroupToWorkOn
+
+
+# $resourceGroupToWorkOn = "krmanupa-final_autovalidate"
+# $automationAccountName = "krmanupa-final-auto-create"
+$orderedModuleUris = CreateStorageAccount -storageAccName "teststoragesa1" -resourceGroupName "krmanupa-final_autovalidate" -location $location 
+
+ImportRequiredModules -accName $automationAccountName -resourceGroupName $resourceGroupToWorkOn -orderedModuleUris $orderedModuleUris

@@ -92,7 +92,7 @@ New-AzVm `
 
 Write-Output  "Compile configuration" -verbose
 Start-AzAutomationDscCompilationJob -ConfigurationName "SetupServer" -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountDscName | Out-Null
-$CompilationJobs = Get-AzAutomationDscCompilationJob -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountDscName | Out-Null
+($CompilationJobs = Get-AzAutomationDscCompilationJob -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountDscName) | Out-Null
 $JobStream = $CompilationJobs[0] | Get-AzAutomationDscCompilationJobOutput -Stream "Any"
 
 Start-Sleep -Seconds 100

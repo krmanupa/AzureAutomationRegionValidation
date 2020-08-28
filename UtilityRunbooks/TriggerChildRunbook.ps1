@@ -5,6 +5,7 @@ Param(
     [string] $ResourceGroupName   
 )
 
+$connectionName = "AzureRunAsConnection"
 try
 {
     $servicePrincipalConnection = Get-AutomationConnection -Name $connectionName      
