@@ -13,7 +13,9 @@ Param(
 )
 
 $ErrorActionPreference = "Stop"
-
+if($Environment -eq "USNat"){
+    Add-AzEnvironment -Name USNat -ServiceManagementUrl 'https://management.core.eaglex.ic.gov/' -ActiveDirectoryAuthority 'https://login.microsoftonline.eaglex.ic.gov/' -ActiveDirectoryServiceEndpointResourceId 'https://management.azure.eaglex.ic.gov/' -ResourceManagerEndpoint 'https://usnateast.management.azure.eaglex.ic.gov' -GraphUrl 'https://graph.cloudapi.eaglex.ic.gov' -GraphEndpointResourceId 'https://graph.cloudapi.eaglex.ic.gov/' -AdTenant 'Common' -AzureKeyVaultDnsSuffix 'vault.cloudapi.eaglex.ic.gov' -AzureKeyVaultServiceEndpointResourceId 'https://vault.cloudapi.eaglex.ic.gov' -EnableAdfsAuthentication 'False'
+}
 function GetAuthToken{
     # Write-Verbose "Get auth token" -verbose
     $currentAzureContext = Get-AzContext
@@ -130,13 +132,19 @@ catch {
     }
 }
 
+
+$uri = "management.azure.com"
+if($Environment -eq "USNat"){
+    $uri = "management.core.eaglex.ic.gov"
+}
+
 if($IsEnableCMK -eq $true){
     #add the account's service principal in the key vault to provide account the access to the KeyVault with all the required permissions
     # generate a key to apply that to the automation account as CMK.
-    EnableCMK -UriStart "management.azure.com" -SubId $SubId -ResourceGroupName $ResourceGroupName -AutomationAccName $AccountName
+    EnableCMK -UriStart $uri -SubId $SubId -ResourceGroupName $ResourceGroupName -AutomationAccName $AccountName
     Write-Output "CMK Validation :: Enable CMK Successful"
 }
 else{
-    DisableCMK -UriStart "management.azure.com" -SubId $SubId -ResourceGroupName $ResourceGroupName -AutomationAccName $AccountName
+    DisableCMK -UriStart $uri -SubId $SubId -ResourceGroupName $ResourceGroupName -AutomationAccName $AccountName
     Write-Output "CMK Validation :: Disabl CMK Successful"
 }

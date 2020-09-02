@@ -20,3 +20,11 @@ Accounts:
 
 DSC:
 1. Sensitive?
+
+
+1. UriStart
+2. Add-AzEnvironment
+3. AzureEnvironment in all the connect-ToAzAccount
+4. Import-Module
+5. Invoke-Webrequest gets forbidden error
+6. Trigger child runbook

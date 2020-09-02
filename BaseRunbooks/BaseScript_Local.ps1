@@ -56,6 +56,38 @@ function ImportRequiredModules {
     }
 }
 
+function AddVMExtensionScriptsToStorageAccount {
+    param(
+        $resourceGroupName,
+        $storageAccName,
+        $automationAccountName
+    )
+
+    $ctx=(Get-AzStorageAccount -ResourceGroupName $resourceGroupName -Name $storageAccName).Context 
+    ## Creates an file share  
+    $containerName = "workerregisterscriptscontainer"
+    New-AzStorageContainer -Name $containerName -Context $ctx -Permission Container 
+
+    Start-Sleep -s 60
+
+    $vmExtensionsPath = "..\VMExtensionScripts"
+    Get-ChildItem $vmExtensionsPath | 
+    ForEach-Object{
+        Write-Output "Uploading " + $_.Name
+        if($_.Name -eq "AutoRegisterLinuxHW.py" -or $_.Name -eq "WorkerDownloadAndRegister.ps1"){
+            Set-AzStorageBlobContent -Container $containerName -Context $ctx -File $_.FullName
+        }
+    }
+
+    #CreateAutomationVariables
+    Get-AzStorageBlob -Container $containerName -Context $ctx |
+    ForEach-Object{
+        $absoluteUri = $_.ICloudBlob.Uri.AbsoluteUri
+        [string] $extensionUri = $absoluteUri
+        New-AzAutomationVariable -Name $_.Name.split('.')[0] -Value $extensionUri -Encrypted $False -AutomationAccountName $automationAccountName -ResourceGroupName $resourceGroupName | Out-Null
+    } 
+}
+
 function ImportRunbooksGivenTheFolder {
     param (
         $accName,
@@ -100,7 +132,7 @@ function ImportRequiredRunbooks {
         $resourceGroupName
     )
 
-    ImportRunbooksGivenTheFolder -accName $accName -resourceGroupName $resourceGroupName -folderPath "..\UtilityRunbooks"
+    # ImportRunbooksGivenTheFolder -accName $accName -resourceGroupName $resourceGroupName -folderPath "..\UtilityRunbooks"
     ImportRunbooksGivenTheFolder -accName $accName -resourceGroupName $resourceGroupName -folderPath "..\ValidationRunbooks"
     ImportRunbooksGivenTheFolder -accName $accName -resourceGroupName $resourceGroupName -folderPath "..\UtilityRunbooks\powershellWFRunbooks" -isPSWFRbFolder $true
     ImportRunbooksGivenTheFolder -accName $accName -resourceGroupName $resourceGroupName -folderPath "..\ValidationRunbooks\powershellWorkflowScripts" -isPSWFRbFolder $true
@@ -111,6 +143,7 @@ function CreateStorageAccount {
     param (
         $storageAccName,
         $resourceGroupName,
+        $automationAccountName,
         $location
     )
 
@@ -128,8 +161,12 @@ function CreateStorageAccount {
     Write-Output "SAS Token : $sasToken"
 
     #upload the files to the fileshare
-    
     $fileShareName = "testfileshare"
+    
+    #upload VM Extension Scripts
+    AddVMExtensionScriptsToStorageAccount -fileShareName $fileShareName -ctx $ctx -sasToken $sasToken -resourceGroupName $resourceGroupName -automationAccountName $automationAccountName
+
+
     $folderPath = "..\Modules"
     Get-ChildItem $folderPath -Filter *.zip |
     Foreach-Object{
@@ -158,28 +195,32 @@ function CreateStorageAccount {
 
 Select-AzSubscription -SubscriptionId $SubId
 
-$guid_val = [guid]::NewGuid()
-$guid = $guid_val.ToString()
+# $guid_val = [guid]::NewGuid()
+# $guid = $guid_val.ToString()
 
-$resourceGroupToWorkOn = "region_autovalidate_" + $guid.SubString(0,4)
-CreateResourceGroupToWorkOn -resourceGroupName $resourceGroupToWorkOn
-Write-Output "Resource Group - 1 : $resourceGroupName"
+# # $resourceGroupToWorkOn = "region_autovalidate_" + $guid.SubString(0,4)
+# # CreateResourceGroupToWorkOn -resourceGroupName $resourceGroupToWorkOn
+# # Write-Output "Resource Group - 1 : $resourceGroupName"
 
 
-$resourceGroupToMoveAccs = "region_autovalidate_moveto_" + $guid.SubString(0,4)
-CreateResourceGroupToMoveAccsTo -resourceGroupName $resourceGroupToMoveAccs
-Write-Output "Resource Group - 2 : $resourceGroupToMoveAccs"
+# $resourceGroupToMoveAccs = "region_autovalidate_moveto_" + $guid.SubString(0,4)
+# CreateResourceGroupToMoveAccsTo -resourceGroupName $resourceGroupToMoveAccs
+# Write-Output "Resource Group - 2 : $resourceGroupToMoveAccs"
 
-$automationAccountName = "region_auto_validate_aa_" + $guid.SubString(0,4) 
-CreateAutomationAccount -resourceGroupName $resourceGroupToWorkOn -accName $automationAccountName
-Write-Output "Automation Account : $automationAccountName"
+# # $automationAccountName = "region_auto_validate_aa_" + $guid.SubString(0,4) 
+# # CreateAutomationAccount -resourceGroupName $resourceGroupToWorkOn -accName $automationAccountName
+# # Write-Output "Automation Account : $automationAccountName"
 
+
+$resourceGroupToWorkOn = "anthos"#"krmanupa-migration-jpe"#"krmanupa-final_autovalidate"
+$automationAccountName = "gosdk1"#"krmanupa-final-auto-create"
+
+
+# $resourceGroupToWorkOn = "NewRegionRG"
+# $automationAccountName = "NewRegionTesting"
 ImportRequiredRunbooks -accName $automationAccountName -resourceGroupName $resourceGroupToWorkOn
-ImportRequiredModules -accName $automationAccountName -resourceGroupName $resourceGroupToWorkOn
 
+# $orderedModuleUris = CreateStorageAccount -storageAccName "teststoragesa2" -resourceGroupName $resourceGroupToWorkOn -automationAccountName $automationAccountName -location $location 
 
-# $resourceGroupToWorkOn = "krmanupa-final_autovalidate"
-# $automationAccountName = "krmanupa-final-auto-create"
-$orderedModuleUris = CreateStorageAccount -storageAccName "teststoragesa1" -resourceGroupName "krmanupa-final_autovalidate" -location $location 
-
-ImportRequiredModules -accName $automationAccountName -resourceGroupName $resourceGroupToWorkOn -orderedModuleUris $orderedModuleUris
+# ImportRequiredModules -accName $automationAccountName -resourceGroupName $resourceGroupToWorkOn -orderedModuleUris $orderedModuleUris
+# AddVMExtensionScriptsToStorageAccount -resourceGroupName $resourceGroupToWorkOn -storageAccName "teststoragesa1" -automationAccountName $automationAccountName

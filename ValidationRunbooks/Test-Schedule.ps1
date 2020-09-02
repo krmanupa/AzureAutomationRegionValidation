@@ -21,7 +21,9 @@ Param(
     #Import-Module Az.Automation
     
     $ErrorActionPreference = "Stop"
-    
+    if($Environment -eq "USNat"){
+        Add-AzEnvironment -Name USNat -ServiceManagementUrl 'https://management.core.eaglex.ic.gov/' -ActiveDirectoryAuthority 'https://login.microsoftonline.eaglex.ic.gov/' -ActiveDirectoryServiceEndpointResourceId 'https://management.azure.eaglex.ic.gov/' -ResourceManagerEndpoint 'https://usnateast.management.azure.eaglex.ic.gov' -GraphUrl 'https://graph.cloudapi.eaglex.ic.gov' -GraphEndpointResourceId 'https://graph.cloudapi.eaglex.ic.gov/' -AdTenant 'Common' -AzureKeyVaultDnsSuffix 'vault.cloudapi.eaglex.ic.gov' -AzureKeyVaultServiceEndpointResourceId 'https://vault.cloudapi.eaglex.ic.gov' -EnableAdfsAuthentication 'False'
+    }
     $guid = New-Guid
     $ScheduleName = $ScheduleName + "-" + $guid.ToString()
     $RunbookName = $RunbookName + "-" + $guid.ToString()

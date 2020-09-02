@@ -29,13 +29,11 @@ workflow Test-JobSpecific {
 
 $workerGroupName = "test-auto-create"
 $assetVerificationRunbookParams = @{"guid" = $guid}
-
+if($Environment -eq "USNat"){
+    Add-AzEnvironment -Name USNat -ServiceManagementUrl 'https://management.core.eaglex.ic.gov/' -ActiveDirectoryAuthority 'https://login.microsoftonline.eaglex.ic.gov/' -ActiveDirectoryServiceEndpointResourceId 'https://management.azure.eaglex.ic.gov/' -ResourceManagerEndpoint 'https://usnateast.management.azure.eaglex.ic.gov' -GraphUrl 'https://graph.cloudapi.eaglex.ic.gov' -GraphEndpointResourceId 'https://graph.cloudapi.eaglex.ic.gov/' -AdTenant 'Common' -AzureKeyVaultDnsSuffix 'vault.cloudapi.eaglex.ic.gov' -AzureKeyVaultServiceEndpointResourceId 'https://vault.cloudapi.eaglex.ic.gov' -EnableAdfsAuthentication 'False'
+}
 
 function Connect-To-AzAccount{
-    Param(
-    [Parameter(Mandatory = $false)]
-    [string] $Environment = "AzureCloud"
-    )
     # Connect using RunAs account connection
     $connectionName = "AzureRunAsConnection"
     try
@@ -47,7 +45,7 @@ function Connect-To-AzAccount{
             -TenantId $servicePrincipalConnection.TenantId `
             -ApplicationId $servicePrincipalConnection.ApplicationId `
             -CertificateThumbprint $servicePrincipalConnection.CertificateThumbprint `
-            -Environment $Environment | Out-Null
+            -Environment $using:Environment | Out-Null
     }
     catch {
         if (!$servicePrincipalConnection)
@@ -136,7 +134,7 @@ function Start-PsJob {
         }
     }
     else{
-        Write-Error "Cloud and Hybrid Jobs Validation :: PS Runbook Job execution status after 10 minutes of waiting is $jobStatus"
+        Write-Error "Cloud and Hybrid Jobs Validation :: PS Runbook Job execution status after reaching the terminal state is $jobStatus"
     }
 }
 
@@ -232,7 +230,8 @@ sequence {
         Start-PsJob 
         Write-Output "Cloud and Hybrid Jobs Validation :: Powershell Cloud Job validation completed"
 
-        # Start-PsWFJob 
+        Start-PsWFJob 
+        Write-Output "Cloud and Hybrid Jobs Validation :: Powershell WORKFLOW Cloud Job validation completed"
 
         Start-ChildJobTriggeringRunbook
         Write-Output "Cloud and Hybrid Jobs Validation :: Trigger Child Runbook  Cloud Job validation completed"
@@ -251,7 +250,8 @@ sequence {
         Start-PsJob -runOn $workerGroupName
         Write-Output "Cloud and Hybrid Jobs Validation :: Powershell Hybrid Job validation completed"
 
-        # Start-PsWFJob -runOn $workerGroupName
+        Start-PsWFJob -runOn $workerGroupName
+        Write-Output "Cloud and Hybrid Jobs Validation :: Powershell WORKFLOW Hybrid Job validation completed"
 
         Start-ChildJobTriggeringRunbook -runOn $workerGroupName
         Write-Output "Cloud and Hybrid Jobs Validation :: Trigger Child Runbook Hybrid Job validation completed"

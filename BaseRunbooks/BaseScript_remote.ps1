@@ -1,22 +1,30 @@
 workflow BaseScript_remote{
     Param(
-    [Parameter(Mandatory = $false)]
-    [string] $location = "West Central US",  
-    [Parameter(Mandatory = $false)]
-    [string] $Environment = "AzureCloud", 
-    [Parameter(Mandatory = $false)]
-    [string] $ResourceGroupName = "krmanupa-test-auto",
-    [Parameter(Mandatory = $false)]
-    [string] $AccountName = "krmanupa-base-aa",
-    [Parameter (Mandatory= $false)]
-    [string] $NewResourceGroupName = "TestRG",
-    [Parameter (Mandatory=$false)]
-    [string] $guid
-    )
+        [Parameter(Mandatory = $false)]
+        [string] $location = "USNat East",  
+        [Parameter(Mandatory = $false)]
+        [string] $Environment = "USNat", 
+        [Parameter(Mandatory = $true)]
+        [string] $SubscriptionId = "", 
+        [Parameter(Mandatory = $false)]
+        [string] $ResourceGroupName = "NewRegionRG",
+        [Parameter(Mandatory = $false)]
+        [string] $AccountName = "NewRegionTesting",
+        [Parameter (Mandatory= $false)]
+        [string] $NewResourceGroupName = "region_autovalidate_moveto_76fb",
+        [Parameter (Mandatory=$false)]
+        [string] $guid
+        )
+     
+$guid_val = [guid]::NewGuid()
+$guid = $guid_val.ToString()
+$UriStart = "https://management.azure.com/subscriptions/" + $SubscriptionId
 
-if($guid -eq ""){
-    $guid_val = [guid]::NewGuid()
-    $guid = $guid_val.ToString()
+
+if($Environment -eq "USNat" -and $location -eq "USNat East"){
+Add-AzEnvironment -Name USNat -ServiceManagementUrl 'https://management.core.eaglex.ic.gov/' -ActiveDirectoryAuthority 'https://login.microsoftonline.eaglex.ic.gov/' -ActiveDirectoryServiceEndpointResourceId 'https://management.azure.eaglex.ic.gov/' -ResourceManagerEndpoint 'https://usnateast.management.azure.eaglex.ic.gov' -GraphUrl 'https://graph.cloudapi.eaglex.ic.gov' -GraphEndpointResourceId 'https://graph.cloudapi.eaglex.ic.gov/' -AdTenant 'Common' -AzureKeyVaultDnsSuffix 'vault.cloudapi.eaglex.ic.gov' -AzureKeyVaultServiceEndpointResourceId 'https://vault.cloudapi.eaglex.ic.gov' -EnableAdfsAuthentication 'False'
+
+$UriStart = "https://management.core.eaglex.ic.gov/subscriptions/" + $SubscriptionId
 }
 
 $vmName = "Test-VM-" + $guid.SubString(0,4) 
@@ -27,11 +35,10 @@ $assetVerificationRunbookParams = @{"guid" = $guid}
 $CreateHWGRunbookName = "CreateHWG"
 $StartCloudHybridJobsRunbookName = "Test-JobSpecific"
 
+
+
+
 function Connect-To-AzAccount{
-    Param(
-    [Parameter(Mandatory = $false)]
-    [string] $Environment = "AzureCloud"
-    )
     # Connect using RunAs account connection
     $connectionName = "AzureRunAsConnection"
     try
@@ -43,7 +50,7 @@ function Connect-To-AzAccount{
             -TenantId $servicePrincipalConnection.TenantId `
             -ApplicationId $servicePrincipalConnection.ApplicationId `
             -CertificateThumbprint $servicePrincipalConnection.CertificateThumbprint `
-            -Environment $Environment 
+            -Environment $using:Environment 
     }
     catch {
         if (!$servicePrincipalConnection)
@@ -72,7 +79,7 @@ function Start-RunbookSpecificOperations {
     
     Write-Output "Starting Runbook Specific Validations..."
 
-    $runbookParams =  @{"location"= $using:location ;"Environment" = $using:Environment;"AccountName"=$using:AccountName;"ResourceGroupName"=$using:ResourceGroupName}
+    $runbookParams =  @{"location"= $using:location ;"Environment" = $using:Environment;"UriStart" = $using:UriStart;"AccountName"=$using:AccountName;"ResourceGroupName"=$using:ResourceGroupName}
 
     Start-AzAutomationRunbook -Name "Test-Runbooks-Creation" -ResourceGroupName $using:ResourceGroupName -AutomationAccountName $using:AccountName -Parameters $runbookParams -MaxWaitSeconds 600 -Wait 
 
@@ -82,7 +89,7 @@ function Start-RunbookSpecificOperations {
 function Start-AssetCreation {
     Write-Output "Starting Asset Creation ..."
     
-    $automationAssetsCreationsParams =  @{"guid" = $using:guid;"ResourceGroupName"=$using:ResourceGroupName; "AccountName"= $using:AccountName;"Environment" = $using:Environment }
+    $automationAssetsCreationsParams =  @{"guid" = $using:guid;"ResourceGroupName"=$using:ResourceGroupName; "AccountName"= $using:AccountName;"Environment" = $using:Environment; "UriStart" = $using:UriStart }
     
     Start-AzAutomationRunbook -Name "Test-AutomationAssets-Creation" -ResourceGroupName $using:ResourceGroupName -AutomationAccountName $using:AccountName -Parameters $automationAssetsCreationsParams -MaxWaitSeconds 2400 -Wait
 
@@ -112,7 +119,7 @@ function Start-CloudAndHybridJobsValidation {
 function Start-DSCSpecificRunbook {
     Write-Output "Starting DSC Validation..."
 
-    $dscParams = @{"location"=$using:location; "Environment"=$using:Environment;"AccountDscName" = $using:AccountName; "ResourceGroupName"=$using:ResourceGroupName}
+    $dscParams = @{"location"=$using:location; "Environment"=$using:Environment;"UriStart" = $using:UriStart;"AccountDscName" = $using:AccountName; "ResourceGroupName"=$using:ResourceGroupName}
     Start-AzAutomationRunbook -Name "Test-dsc" -ResourceGroupName $using:ResourceGroupName -AutomationAccountName $using:AccountName -Parameters $dscParams -MaxWaitSeconds 1800 -Wait
 
     Write-Output "DSC Validation Completed"
@@ -144,7 +151,7 @@ function Start-Schedule {
     $scheduleParamsForCloud = @{"Environment"=$using:Environment;"AccountName"=$using:AccountName; "ResourceGroupName"=$using:ResourceGroupName}
     Start-AzAutomationRunbook -Name "Test-Schedule" -ResourceGroupName $using:ResourceGroupName -AutomationAccountName $using:AccountName -Parameters $scheduleParamsForCloud -MaxWaitSeconds 1800 -Wait
 
-    $scheduleParamsForHybrid = @{"Environment"=$using:Environment;"AccountName"=$using:AccountName; "ResourceGroupName"=$using:ResourceGroupName; "WorkerGroup" = $using:workerGroupName}
+    $scheduleParamsForHybrid = @{"Environment"=$using:Environment;"AccountName"=$using:AccountName; "ResourceGroupName"=$using:ResourceGroupName; "WorkerGroup" = $using:workerGroupName;"UriStart" = $using:UriStart}
     Start-AzAutomationRunbook -Name "Test-Schedule" -ResourceGroupName $using:ResourceGroupName -AutomationAccountName $using:AccountName -Parameters $scheduleParamsForHybrid -MaxWaitSeconds 1800 -Wait
 
     Write-Output "JobSchedule Validation Completed"

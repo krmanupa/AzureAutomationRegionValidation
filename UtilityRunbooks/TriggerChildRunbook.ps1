@@ -2,7 +2,9 @@ Param(
     [Parameter(Mandatory = $true)]
     [string] $AccountName,
     [Parameter(Mandatory = $true)]
-    [string] $ResourceGroupName   
+    [string] $ResourceGroupName,
+    [Parameter (Mandatory=$false)] 
+    [string] $Environment
 )
 
 $connectionName = "AzureRunAsConnection"
@@ -15,7 +17,7 @@ try
         -TenantId $servicePrincipalConnection.TenantId `
         -ApplicationId $servicePrincipalConnection.ApplicationId `
         -CertificateThumbprint $servicePrincipalConnection.CertificateThumbprint `
-        -Environment "AzureCloud"
+        -Environment $Environment
 }
 catch {
     if (!$servicePrincipalConnection)
