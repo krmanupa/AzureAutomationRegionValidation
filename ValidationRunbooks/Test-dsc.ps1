@@ -112,7 +112,8 @@ else{
 Start-Sleep -Seconds 100
 
 Write-Output  "Get node report" -verbose
-($NodeReport = Get-AzAutomationDscNodeReport -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountDscName -NodeId $Node.Id -Latest) | Out-Null
+$nodeId = [System.guid]::New($Node.Id)
+($NodeReport = Get-AzAutomationDscNodeReport -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountDscName -NodeId $nodeId  -Latest) | Out-Null
 $NodeReport.Status -like "Compliant"
 if($NodeReport.Status -like "Compliant") {
     Write-Output  "Node status compliant"
@@ -122,7 +123,7 @@ else{
 }
 
 Write-Output  "Unregister node" -verbose
-Unregister-AzAutomationDscNode -AutomationAccountName $AccountDscName -ResourceGroupName $ResourceGroupName -Id $Node.Id -Force | Out-Null
+Unregister-AzAutomationDscNode -AutomationAccountName $AccountDscName -ResourceGroupName $ResourceGroupName -Id $nodeId  -Force | Out-Null
 
 Write-Output  "Delete VM" -verbose
 Remove-AzVM -ResourceGroupName $ResourceGroupName -Name $VMDscName -Force | Out-Null
