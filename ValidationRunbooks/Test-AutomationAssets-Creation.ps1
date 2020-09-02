@@ -61,13 +61,13 @@ $DateTimeVariableNameEn = "TestEnDateTimeVariable" + "-" + $guid
 $UnspecifiedVariableNameEn = "TestEnUnspecifiedVariable" + "-" + $guid
 
 Write-Output  "Import module" -verbose
-$TestModule = New-AzAutomationModule -AutomationAccountName $AccountName -Name $ModuleName -ContentLink "http://contosostorage.blob.core.windows.net/modules/ContosoModule.zip" -ResourceGroupName $ResourceGroupName
-if($TestModule.Name -like $ModuleName) {
-Write-Output  "Module creation successful"
-} 
-else{
-Write-Error "Module creation failed"
-}
+# $TestModule = New-AzAutomationModule -AutomationAccountName $AccountName -Name $ModuleName -ContentLink "http://contosostorage.blob.core.windows.net/modules/ContosoModule.zip" -ResourceGroupName $ResourceGroupName
+# if($TestModule.Name -like $ModuleName) {
+# Write-Output  "Module creation successful"
+# } 
+# else{
+# Write-Error "Module creation failed"
+# }
 
 
 ############ Connection ##################
