@@ -10,7 +10,11 @@ Param(
     [string] $SubId = "cd45f23b-b832-4fa4-a434-1bf7e6f14a5a"
 )
 
-# Connect-AzAccount -Environment $Environment
+if($Environment -eq "USNat" -and $location -eq "USNat East"){
+    Add-AzEnvironment -Name USNat -ServiceManagementUrl 'https://management.core.eaglex.ic.gov/' -ActiveDirectoryAuthority 'https://login.microsoftonline.eaglex.ic.gov/' -ActiveDirectoryServiceEndpointResourceId 'https://management.azure.eaglex.ic.gov/' -ResourceManagerEndpoint 'https://usnateast.management.azure.eaglex.ic.gov' -GraphUrl 'https://graph.cloudapi.eaglex.ic.gov' -GraphEndpointResourceId 'https://graph.cloudapi.eaglex.ic.gov/' -AdTenant 'Common' -AzureKeyVaultDnsSuffix 'vault.cloudapi.eaglex.ic.gov' -AzureKeyVaultServiceEndpointResourceId 'https://vault.cloudapi.eaglex.ic.gov' -EnableAdfsAuthentication 'False'
+    }
+    
+Connect-AzAccount -Environment $Environment
 function CreateResourceGroupToWorkOn {
     param (
         $resourceGroupName
@@ -132,7 +136,7 @@ function ImportRequiredRunbooks {
         $resourceGroupName
     )
 
-    # ImportRunbooksGivenTheFolder -accName $accName -resourceGroupName $resourceGroupName -folderPath "..\UtilityRunbooks"
+    ImportRunbooksGivenTheFolder -accName $accName -resourceGroupName $resourceGroupName -folderPath "..\UtilityRunbooks"
     ImportRunbooksGivenTheFolder -accName $accName -resourceGroupName $resourceGroupName -folderPath "..\ValidationRunbooks"
     ImportRunbooksGivenTheFolder -accName $accName -resourceGroupName $resourceGroupName -folderPath "..\UtilityRunbooks\powershellWFRunbooks" -isPSWFRbFolder $true
     ImportRunbooksGivenTheFolder -accName $accName -resourceGroupName $resourceGroupName -folderPath "..\ValidationRunbooks\powershellWorkflowScripts" -isPSWFRbFolder $true
@@ -195,32 +199,27 @@ function CreateStorageAccount {
 
 Select-AzSubscription -SubscriptionId $SubId
 
-# $guid_val = [guid]::NewGuid()
-# $guid = $guid_val.ToString()
+$guid_val = [guid]::NewGuid()
+$guid = $guid_val.ToString()
 
-# # $resourceGroupToWorkOn = "region_autovalidate_" + $guid.SubString(0,4)
-# # CreateResourceGroupToWorkOn -resourceGroupName $resourceGroupToWorkOn
-# # Write-Output "Resource Group - 1 : $resourceGroupName"
-
-
-# $resourceGroupToMoveAccs = "region_autovalidate_moveto_" + $guid.SubString(0,4)
-# CreateResourceGroupToMoveAccsTo -resourceGroupName $resourceGroupToMoveAccs
-# Write-Output "Resource Group - 2 : $resourceGroupToMoveAccs"
-
-# # $automationAccountName = "region_auto_validate_aa_" + $guid.SubString(0,4) 
-# # CreateAutomationAccount -resourceGroupName $resourceGroupToWorkOn -accName $automationAccountName
-# # Write-Output "Automation Account : $automationAccountName"
+$resourceGroupToWorkOn = "region_autovalidate_" + $guid.SubString(0,4)
+CreateResourceGroupToWorkOn -resourceGroupName $resourceGroupToWorkOn
+Write-Output "Resource Group - 1 : $resourceGroupName"
 
 
-$resourceGroupToWorkOn = "anthos"#"krmanupa-migration-jpe"#"krmanupa-final_autovalidate"
-$automationAccountName = "gosdk1"#"krmanupa-final-auto-create"
+$resourceGroupToMoveAccs = "region_autovalidate_moveto_" + $guid.SubString(0,4)
+CreateResourceGroupToMoveAccsTo -resourceGroupName $resourceGroupToMoveAccs
+Write-Output "Resource Group - 2 : $resourceGroupToMoveAccs"
 
+$automationAccountName = "region_auto_validate_aa_" + $guid.SubString(0,4) 
+CreateAutomationAccount -resourceGroupName $resourceGroupToWorkOn -accName $automationAccountName
+Write-Output "Automation Account : $automationAccountName"
 
 # $resourceGroupToWorkOn = "NewRegionRG"
 # $automationAccountName = "NewRegionTesting"
 ImportRequiredRunbooks -accName $automationAccountName -resourceGroupName $resourceGroupToWorkOn
 
-# $orderedModuleUris = CreateStorageAccount -storageAccName "teststoragesa2" -resourceGroupName $resourceGroupToWorkOn -automationAccountName $automationAccountName -location $location 
+$orderedModuleUris = CreateStorageAccount -storageAccName "teststoragesa2" -resourceGroupName $resourceGroupToWorkOn -automationAccountName $automationAccountName -location $location 
 
-# ImportRequiredModules -accName $automationAccountName -resourceGroupName $resourceGroupToWorkOn -orderedModuleUris $orderedModuleUris
-# AddVMExtensionScriptsToStorageAccount -resourceGroupName $resourceGroupToWorkOn -storageAccName "teststoragesa1" -automationAccountName $automationAccountName
+ImportRequiredModules -accName $automationAccountName -resourceGroupName $resourceGroupToWorkOn -orderedModuleUris $orderedModuleUris
+AddVMExtensionScriptsToStorageAccount -resourceGroupName $resourceGroupToWorkOn -storageAccName "teststoragesa1" -automationAccountName $automationAccountName

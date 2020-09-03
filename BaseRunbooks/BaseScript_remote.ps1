@@ -11,9 +11,7 @@ workflow BaseScript_remote{
         [Parameter(Mandatory = $false)]
         [string] $AccountName = "NewRegionTesting",
         [Parameter (Mandatory= $false)]
-        [string] $NewResourceGroupName = "region_autovalidate_moveto_76fb",
-        [Parameter (Mandatory=$false)]
-        [string] $guid
+        [string] $NewResourceGroupName = "region_autovalidate_moveto_76fb"
         )
      
 $guid_val = [guid]::NewGuid()

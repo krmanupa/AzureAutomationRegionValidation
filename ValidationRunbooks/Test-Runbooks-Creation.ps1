@@ -15,8 +15,11 @@ $ErrorActionPreference = "Stop"
 if($Environment -eq "USNat"){
     Add-AzEnvironment -Name USNat -ServiceManagementUrl 'https://management.core.eaglex.ic.gov/' -ActiveDirectoryAuthority 'https://login.microsoftonline.eaglex.ic.gov/' -ActiveDirectoryServiceEndpointResourceId 'https://management.azure.eaglex.ic.gov/' -ResourceManagerEndpoint 'https://usnateast.management.azure.eaglex.ic.gov' -GraphUrl 'https://graph.cloudapi.eaglex.ic.gov' -GraphEndpointResourceId 'https://graph.cloudapi.eaglex.ic.gov/' -AdTenant 'Common' -AzureKeyVaultDnsSuffix 'vault.cloudapi.eaglex.ic.gov' -AzureKeyVaultServiceEndpointResourceId 'https://vault.cloudapi.eaglex.ic.gov' -EnableAdfsAuthentication 'False'
 }
+$guid_val = [guid]::NewGuid()
+$guid = $guid_val.ToString()
+
 $powershellRunbookName = "ps-job-test-rb" + $guid
-$python2RunbookName = "py2-job-test-rb" +$guid
+$python2RunbookName = "py2-job-test-rb" + $guid
 $powershellWorkflowRunbookName = "pswf-job-test-rb" + $guid
 
 # Connect using RunAs account connection
