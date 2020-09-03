@@ -72,7 +72,7 @@ try{
     $PutContentPy2Uri = "$UriStart/resourceGroups/$ResourceGroupName/providers/Microsoft.Automation/automationAccounts/$AccountName/runbooks/$python2RunbookName/draft/content?api-version=2015-10-31"
     Invoke-RestMethod -Uri $PutContentPy2Uri -Method Put -ContentType $contentType3 -Headers $Headers -Body $bodyPy2
 
-    $bodyPswf = 'workflow pswf-job-test-rb{Write-Output "Hello"}'        
+    $bodyPswf = 'workflow ' + $powershellWorkflowRunbookName +  '{Write-Output "Hello"}'        
     $PutContentPswfUri = "$UriStart/resourceGroups/$ResourceGroupName/providers/Microsoft.Automation/automationAccounts/$AccountName/runbooks/$powershellWorkflowRunbookName/draft/content?api-version=2015-10-31"
     Invoke-RestMethod -Uri $PutContentPswfUri -Method Put -ContentType $contentType3 -Headers $Headers -Body $bodyPswf
 }

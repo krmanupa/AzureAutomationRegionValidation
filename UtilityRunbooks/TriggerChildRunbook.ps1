@@ -6,7 +6,9 @@ Param(
     [Parameter (Mandatory=$false)] 
     [string] $Environment
 )
-
+if($Environment -eq "USNat"){
+    Add-AzEnvironment -Name USNat -ServiceManagementUrl 'https://management.core.eaglex.ic.gov/' -ActiveDirectoryAuthority 'https://login.microsoftonline.eaglex.ic.gov/' -ActiveDirectoryServiceEndpointResourceId 'https://management.azure.eaglex.ic.gov/' -ResourceManagerEndpoint 'https://usnateast.management.azure.eaglex.ic.gov' -GraphUrl 'https://graph.cloudapi.eaglex.ic.gov' -GraphEndpointResourceId 'https://graph.cloudapi.eaglex.ic.gov/' -AdTenant 'Common' -AzureKeyVaultDnsSuffix 'vault.cloudapi.eaglex.ic.gov' -AzureKeyVaultServiceEndpointResourceId 'https://vault.cloudapi.eaglex.ic.gov' -EnableAdfsAuthentication 'False'
+}
 $connectionName = "AzureRunAsConnection"
 try
 {
@@ -33,7 +35,7 @@ catch {
 
 Write-Output "Triggering Child Runbook"
 
-$testPsRb = "ps-job-test"
+$testPsRb = "ps-webhook-test"
 $childJob = Start-AutomationRunbook -Name $testPsRb
 $childJobId = $childJob.Guid
 

@@ -146,7 +146,7 @@ function Start-Webhook {
 function Start-Schedule {
     Write-Output "Starting JobSchedule Validation..."
 
-    $scheduleParamsForCloud = @{"Environment"=$using:Environment;"AccountName"=$using:AccountName; "ResourceGroupName"=$using:ResourceGroupName}
+    $scheduleParamsForCloud = @{"Environment"=$using:Environment;"AccountName"=$using:AccountName; "ResourceGroupName"=$using:ResourceGroupName;"UriStart" = $using:UriStart}
     Start-AzAutomationRunbook -Name "Test-Schedule" -ResourceGroupName $using:ResourceGroupName -AutomationAccountName $using:AccountName -Parameters $scheduleParamsForCloud -MaxWaitSeconds 1800 -Wait
 
     $scheduleParamsForHybrid = @{"Environment"=$using:Environment;"AccountName"=$using:AccountName; "ResourceGroupName"=$using:ResourceGroupName; "WorkerGroup" = $using:workerGroupName;"UriStart" = $using:UriStart}

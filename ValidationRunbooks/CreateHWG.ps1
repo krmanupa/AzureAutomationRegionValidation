@@ -135,7 +135,13 @@ if($WorkerType -eq "Windows"){
     ## Run AZ VM Extension to download and Install MMA Agent
     $commandToExecute = "powershell .\WorkerDownloadAndRegister.ps1 -workspaceId $workspaceId -workspaceKey $workspacePrimaryKey -workerGroupName $WorkerGroupName -agentServiceEndpoint $agentEndpoint -aaToken $aaPrimaryKey"
 
-    $settings = @{"fileUris" =  @("https://raw.githubusercontent.com/krmanupa/AutoRegisterHW/master/VMExtensionScripts/WorkerDownloadAndRegister.ps1"); "commandToExecute" = $commandToExecute};
+    $variable = Get-AzAutomationVariable -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName -Name "WorkerDownloadAndRegister"
+    $uri = $variable.Value
+
+    if($uri -eq ""){
+        $uri = "https://raw.githubusercontent.com/krmanupa/AutoRegisterHW/master/VMExtensionScripts/WorkerDownloadAndRegister.ps1"
+    }
+    $settings = @{"fileUris" =  @($uri.ToString()); "commandToExecute" = $commandToExecute};
     $protectedSettings = @{"storageAccountName" = ""; "storageAccountKey" = ""};
 
     # Run Az VM Extension to download and register worker.

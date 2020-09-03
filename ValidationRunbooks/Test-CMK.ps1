@@ -52,7 +52,7 @@ function EnableAMK{
         $AutomationAccName
     )
     $Uri = @"
-    https://$UriStart/subscriptions/$SubId/resourceGroups/$ResourceGroupName/providers/Microsoft.Automation/automationAccounts/test-krmanupa-eap?api-version=2020-01-13-preview
+    https://$UriStart/subscriptions/$SubId/resourceGroups/$ResourceGroupName/providers/Microsoft.Automation/automationAccounts/"+$AccountName+"?api-version=2020-01-13-preview
 "@
     $ContentType = "application/json"
 
@@ -135,7 +135,7 @@ catch {
 
 $uri = "management.azure.com"
 if($Environment -eq "USNat"){
-    $uri = "management.core.eaglex.ic.gov"
+    $uri = "management.azure.eaglex.ic.gov"
 }
 
 if($IsEnableCMK -eq $true){

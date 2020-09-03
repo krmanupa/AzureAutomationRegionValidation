@@ -44,14 +44,17 @@ Write-Output  "Create VM" -verbose
 $User = "TestDscVMUser"
 $Password = ConvertTo-SecureString "SecurePassword12345" -AsPlainText -Force
 $VMCredential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $User, $Password
+
+$guid_val = [guid]::NewGuid()
+$guid = $guid_val.ToString()
 New-AzVm `
     -ResourceGroupName $ResourceGroupName `
     -Name $VMDscName `
     -Location $location `
-    -VirtualNetworkName "TestDscVnet123" `
-    -SubnetName "TestDscSubnet123" `
-    -SecurityGroupName "TestDscNetworkSecurityGroup123" `
-    -PublicIpAddressName "TestDscPublicIpAddress123" `
+    -VirtualNetworkName "TestDscVnet"+$guid.SubString(0,4) `
+    -SubnetName "TestDscSubnet"+$guid.SubString(0,4) `
+    -SecurityGroupName "TestDscNetworkSecurityGroup"+$guid.SubString(0,4) `
+    -PublicIpAddressName "TestDscPublicIpAddress"+$guid.SubString(0,4) `
     -Credential $VMCredential | Out-Null
 
     Write-Output  "Get auth token" -verbose

@@ -144,7 +144,7 @@ function Start-ChildJobTriggeringRunbook {
         [string] $runOn = ""
     )
     
-    $params = @{"AccountName" = $using:AccountName ; "ResourceGroupName" = $using:ResourceGroupName}
+    $params = @{"AccountName" = $using:AccountName ; "ResourceGroupName" = $using:ResourceGroupName; "Environment" = $using:Environment}
     ($JobCloudPS = Start-AzAutomationRunbook -AutomationAccountName $using:AccountName -Name $using:ChildJobTriggeringRunbookName  -ResourceGroupName $using:ResourceGroupName -RunOn $runOn -Parameters $params) | Out-Null
     $jobId = $JobCloudPS.JobId
     
@@ -163,7 +163,7 @@ function Start-ChildJobTriggeringRunbook {
         Write-Output  "Job for PS runbook to tirgger Child runbook ran successfully on $runOn and output stream is visible"
     }
     else{
-        Write-Error "Cloud and Hybrid Jobs Validation :: PS Runbook Job execution status after 10 minutes of waiting is $jobStatus"
+        Write-Error "Cloud and Hybrid Jobs Validation :: PS Trigger child Runbook Job execution status after reaching the terminal state is $jobStatus"
     }
 }
 

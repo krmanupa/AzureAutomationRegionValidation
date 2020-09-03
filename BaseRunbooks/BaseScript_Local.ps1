@@ -3,7 +3,7 @@
 # Pre-Requsites : 
 Param(
     [Parameter(Mandatory = $false)]
-    [string] $location = "West Central US",  
+    [string] $location = "Japan East",  
     [Parameter(Mandatory = $false)]
     [string] $Environment = "AzureCloud",
     [Parameter(Mandatory = $false)]
@@ -14,7 +14,7 @@ if($Environment -eq "USNat" -and $location -eq "USNat East"){
     Add-AzEnvironment -Name USNat -ServiceManagementUrl 'https://management.core.eaglex.ic.gov/' -ActiveDirectoryAuthority 'https://login.microsoftonline.eaglex.ic.gov/' -ActiveDirectoryServiceEndpointResourceId 'https://management.azure.eaglex.ic.gov/' -ResourceManagerEndpoint 'https://usnateast.management.azure.eaglex.ic.gov' -GraphUrl 'https://graph.cloudapi.eaglex.ic.gov' -GraphEndpointResourceId 'https://graph.cloudapi.eaglex.ic.gov/' -AdTenant 'Common' -AzureKeyVaultDnsSuffix 'vault.cloudapi.eaglex.ic.gov' -AzureKeyVaultServiceEndpointResourceId 'https://vault.cloudapi.eaglex.ic.gov' -EnableAdfsAuthentication 'False'
     }
     
-Connect-AzAccount -Environment $Environment
+# Connect-AzAccount -Environment $Environment
 function CreateResourceGroupToWorkOn {
     param (
         $resourceGroupName
@@ -167,10 +167,6 @@ function CreateStorageAccount {
     #upload the files to the fileshare
     $fileShareName = "testfileshare"
     
-    #upload VM Extension Scripts
-    AddVMExtensionScriptsToStorageAccount -fileShareName $fileShareName -ctx $ctx -sasToken $sasToken -resourceGroupName $resourceGroupName -automationAccountName $automationAccountName
-
-
     $folderPath = "..\Modules"
     Get-ChildItem $folderPath -Filter *.zip |
     Foreach-Object{
@@ -199,27 +195,29 @@ function CreateStorageAccount {
 
 Select-AzSubscription -SubscriptionId $SubId
 
-$guid_val = [guid]::NewGuid()
-$guid = $guid_val.ToString()
+# $guid_val = [guid]::NewGuid()
+# $guid = $guid_val.ToString()
 
-$resourceGroupToWorkOn = "region_autovalidate_" + $guid.SubString(0,4)
-CreateResourceGroupToWorkOn -resourceGroupName $resourceGroupToWorkOn
-Write-Output "Resource Group - 1 : $resourceGroupName"
+# $resourceGroupToWorkOn = "region_autovalidate_" + $guid.SubString(0,4)
+# CreateResourceGroupToWorkOn -resourceGroupName $resourceGroupToWorkOn
+# Write-Output "Resource Group - 1 : $resourceGroupToWorkOn"
 
 
-$resourceGroupToMoveAccs = "region_autovalidate_moveto_" + $guid.SubString(0,4)
-CreateResourceGroupToMoveAccsTo -resourceGroupName $resourceGroupToMoveAccs
-Write-Output "Resource Group - 2 : $resourceGroupToMoveAccs"
+# $resourceGroupToMoveAccs = "region_autovalidate_moveto_" + $guid.SubString(0,4)
+# CreateResourceGroupToMoveAccsTo -resourceGroupName $resourceGroupToMoveAccs
+# Write-Output "Resource Group - 2 : $resourceGroupToMoveAccs"
 
-$automationAccountName = "region_auto_validate_aa_" + $guid.SubString(0,4) 
-CreateAutomationAccount -resourceGroupName $resourceGroupToWorkOn -accName $automationAccountName
-Write-Output "Automation Account : $automationAccountName"
+# $automationAccountName = "region-test-aa" + $guid.SubString(0,4) 
+# CreateAutomationAccount -accName $automationAccountName -resourceGroupName $resourceGroupToWorkOn
+# Write-Output "Automation Account : $automationAccountName"
 
 # $resourceGroupToWorkOn = "NewRegionRG"
 # $automationAccountName = "NewRegionTesting"
-ImportRequiredRunbooks -accName $automationAccountName -resourceGroupName $resourceGroupToWorkOn
+#ImportRequiredRunbooks -accName $automationAccountName -resourceGroupName $resourceGroupToWorkOn
 
-$orderedModuleUris = CreateStorageAccount -storageAccName "teststoragesa2" -resourceGroupName $resourceGroupToWorkOn -automationAccountName $automationAccountName -location $location 
+$resourceGroupToWorkOn = "anthos"
+$automationAccountName = "gosdk1"
+$orderedModuleUris = CreateStorageAccount -storageAccName "teststoragesakrma" -resourceGroupName $resourceGroupToWorkOn -automationAccountName $automationAccountName -location $location 
 
 ImportRequiredModules -accName $automationAccountName -resourceGroupName $resourceGroupToWorkOn -orderedModuleUris $orderedModuleUris
 AddVMExtensionScriptsToStorageAccount -resourceGroupName $resourceGroupToWorkOn -storageAccName "teststoragesa1" -automationAccountName $automationAccountName
