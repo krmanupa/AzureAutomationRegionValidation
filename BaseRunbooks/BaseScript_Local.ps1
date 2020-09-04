@@ -78,9 +78,7 @@ function AddVMExtensionScriptsToStorageAccount {
     Get-ChildItem $vmExtensionsPath | 
     ForEach-Object{
         Write-Output "Uploading " + $_.Name
-        if($_.Name -eq "AutoRegisterLinuxHW.py" -or $_.Name -eq "WorkerDownloadAndRegister.ps1"){
             Set-AzStorageBlobContent -Container $containerName -Context $ctx -File $_.FullName
-        }
     }
 
     #CreateAutomationVariables
@@ -195,29 +193,30 @@ function CreateStorageAccount {
 
 Select-AzSubscription -SubscriptionId $SubId
 
-# $guid_val = [guid]::NewGuid()
-# $guid = $guid_val.ToString()
+$guid_val = [guid]::NewGuid()
+$guid = $guid_val.ToString()
 
-# $resourceGroupToWorkOn = "region_autovalidate_" + $guid.SubString(0,4)
-# CreateResourceGroupToWorkOn -resourceGroupName $resourceGroupToWorkOn
-# Write-Output "Resource Group - 1 : $resourceGroupToWorkOn"
+$resourceGroupToWorkOn = "region_autovalidate_" + $guid.SubString(0,4)
+CreateResourceGroupToWorkOn -resourceGroupName $resourceGroupToWorkOn
+Write-Output "Resource Group - 1 : $resourceGroupToWorkOn"
 
 
-# $resourceGroupToMoveAccs = "region_autovalidate_moveto_" + $guid.SubString(0,4)
-# CreateResourceGroupToMoveAccsTo -resourceGroupName $resourceGroupToMoveAccs
-# Write-Output "Resource Group - 2 : $resourceGroupToMoveAccs"
+$resourceGroupToMoveAccs = "region_autovalidate_moveto_" + $guid.SubString(0,4)
+CreateResourceGroupToMoveAccsTo -resourceGroupName $resourceGroupToMoveAccs
+Write-Output "Resource Group - 2 : $resourceGroupToMoveAccs"
 
-# $automationAccountName = "region-test-aa" + $guid.SubString(0,4) 
-# CreateAutomationAccount -accName $automationAccountName -resourceGroupName $resourceGroupToWorkOn
-# Write-Output "Automation Account : $automationAccountName"
+$automationAccountName = "region-test-aa" + $guid.SubString(0,4) 
+CreateAutomationAccount -accName $automationAccountName -resourceGroupName $resourceGroupToWorkOn
+Write-Output "Automation Account : $automationAccountName"
 
 # $resourceGroupToWorkOn = "NewRegionRG"
 # $automationAccountName = "NewRegionTesting"
-#ImportRequiredRunbooks -accName $automationAccountName -resourceGroupName $resourceGroupToWorkOn
+ImportRequiredRunbooks -accName $automationAccountName -resourceGroupName $resourceGroupToWorkOn
 
-$resourceGroupToWorkOn = "anthos"
-$automationAccountName = "gosdk1"
-$orderedModuleUris = CreateStorageAccount -storageAccName "teststoragesakrma" -resourceGroupName $resourceGroupToWorkOn -automationAccountName $automationAccountName -location $location 
+# $resourceGroupToWorkOn = "anthos"
+# $automationAccountName = "gosdk1"
+$storageAccName = "testsa12"
+$orderedModuleUris = CreateStorageAccount -storageAccName $storageAccName -resourceGroupName $resourceGroupToWorkOn -automationAccountName $automationAccountName -location $location 
 
 ImportRequiredModules -accName $automationAccountName -resourceGroupName $resourceGroupToWorkOn -orderedModuleUris $orderedModuleUris
-AddVMExtensionScriptsToStorageAccount -resourceGroupName $resourceGroupToWorkOn -storageAccName "teststoragesa1" -automationAccountName $automationAccountName
+AddVMExtensionScriptsToStorageAccount -resourceGroupName $resourceGroupToWorkOn -storageAccName $storageAccName -automationAccountName $automationAccountName

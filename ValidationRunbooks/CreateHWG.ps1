@@ -101,7 +101,7 @@ try {
     Write-Output  "Workspace Details to be used to register machine are WorkspaceId : $workspaceId and WorkspaceKey : $workspacePrimaryKey"
 } 
 catch {
-    Write-Error "HWG Creation :: Error creating LA workspace"
+    Write-Error "HWG Creation :: Error creating LA workspace : $_"
 }
 
 
@@ -128,7 +128,7 @@ if($WorkerType -eq "Windows"){
         Start-Sleep -s 120
         }
     catch{
-        Write-Error "HWG Creation :: Error creating VM"
+        Write-Error "HWG Creation :: Error creating VM : $_"
     }
 
     #Run the VM Extension to register the Hybrid worker
@@ -156,10 +156,61 @@ if($WorkerType -eq "Windows"){
             -ExtensionType "CustomScriptExtension" `
             -TypeHandlerVersion "1.10" `
             -Settings $settings `
-            -ProtectedSettings $protectedSettings | Out-Null
+            -ProtectedSettings $protectedSettings 
 
     }
     catch {
-        Write-Error "HWG Creation :: Error running VM extension"
+        Write-Error "HWG Creation :: Error running VM extension - $_"
     }
+}
+
+if($WorkerType -eq "Linux"){
+    #Create a VM
+    try{ 
+        $vmNetworkName = "TestVnet" + $guid.SubString(0,4)
+        $subnetName = "TestSubnet"+ $guid.SubString(0,4)
+        $newtworkSG = "TestNetworkSecurityGroup" + $guid.SubString(0,4)
+        $ipAddressName = "TestPublicIpAddress" + $guid.SubString(0,4)
+        $User = "TestVMUserLinux"
+        $Password = ConvertTo-SecureString "SecurePassword12345" -AsPlainText -Force
+        $VMCredential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $User, $Password
+        New-AzVm `
+            -ResourceGroupName $ResourceGroupName `
+            -Name $vmName `
+            -Location $location `
+            -VirtualNetworkName $vmNetworkName `
+            -SubnetName $subnetName `
+            -SecurityGroupName $newtworkSG `
+            -PublicIpAddressName $ipAddressName `
+            -Image "UbuntuLTS" `
+            -Credential $VMCredential | Out-Null
+
+        Start-Sleep -s 120
+        }
+    catch{
+        Write-Error "HWG Creation :: Error creating VM : $_"
+    }
+
+    $runshellscriptvar = Get-AzAutomationVariable -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName -Name "RunVMCommandOnLinux"
+    $shellscripturi = $runshellscriptvar.Value
+    $shellScriptName = "RunVMCommandOnLinux.sh"
+
+    $destination = Join-Path $env:Temp -ChildPath $shellScriptName -Verbose
+    Invoke-WebRequest -URI $shellscripturi -OutFile $destination
+
+    $variable = Get-AzAutomationVariable -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName -Name "AutoRegisterLinuxHW"
+    $uri = $variable.Value
+
+    if($uri -eq ""){
+        $uri = "https://raw.githubusercontent.com/krmanupa/AzureAutomationRegionValidation/master/VMExtensionScripts/AutoRegisterLinuxHW.py"
+    }
+
+    if($shellscripturi -eq ""){
+        Write-Error "Cannot continue since the uri to the script to run registration on Linux machine is not present in the automation account"
+        return
+    }
+    
+    $filename = "AutoRegisterLinuxHW.py"
+    $params = @{"fileuri" = $uri ; "filename" = $filename;"endpoint" = $agentEndpoint;"groupname" = $WorkerGroupName; "workspaceid" =$workspaceId ; "workspacekey" = $workspacePrimaryKey; "key"=$aaPrimaryKey}
+    Invoke-AzVMRunCommand -ResourceGroupName $ResourceGroupName -VMName $vmName -CommandId "RunShellScript" -ScriptPath $destination -Parameter $params | Out-Null
 }
