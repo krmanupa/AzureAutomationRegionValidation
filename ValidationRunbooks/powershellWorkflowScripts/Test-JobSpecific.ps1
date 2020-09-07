@@ -23,12 +23,15 @@ workflow Test-JobSpecific {
         [Parameter(Mandatory = $false)]
         [string] $RunbookPython2Name = "py2-job-test",
         [Parameter(Mandatory=$false)]
-        [string]$AssetVerificationRunbookPSName = "AssetVerificationRunbook"
+        [string]$AssetVerificationRunbookPSName = "AssetVerificationRunbook",
+        [Parameter(Mandatory=$false)]
+        [string]$AssetVerificationRunbookPythonName = "PythonAutomationAssetsVerification"
         )
 
 
 $workerGroupName = "test-auto-create"
 $assetVerificationRunbookParams = @{"guid" = $guid}
+
 if($Environment -eq "USNat"){
     Add-AzEnvironment -Name USNat -ServiceManagementUrl 'https://management.core.eaglex.ic.gov/' -ActiveDirectoryAuthority 'https://login.microsoftonline.eaglex.ic.gov/' -ActiveDirectoryServiceEndpointResourceId 'https://management.azure.eaglex.ic.gov/' -ResourceManagerEndpoint 'https://usnateast.management.azure.eaglex.ic.gov' -GraphUrl 'https://graph.cloudapi.eaglex.ic.gov' -GraphEndpointResourceId 'https://graph.cloudapi.eaglex.ic.gov/' -AdTenant 'Common' -AzureKeyVaultDnsSuffix 'vault.cloudapi.eaglex.ic.gov' -AzureKeyVaultServiceEndpointResourceId 'https://vault.cloudapi.eaglex.ic.gov' -EnableAdfsAuthentication 'False'
 }
@@ -66,7 +69,6 @@ function Start-PythonJob {
     )
     # Python2
     ($JobHybridPy2 = Start-AzAutomationRunbook -AutomationAccountName $using:AccountName -Name $using:RunbookPython2Name  -ResourceGroupName $using:ResourceGroupName -RunOn $runOn ) | Out-Null
-    Write-Output  "Python Job : $JobHybridPy2"
     $jobId = $JobHybridPy2.JobId
     
     Write-Output  "Polling for job completion for job Id : $jobId"
@@ -214,7 +216,11 @@ function Start-AssetVerificationJob {
         [Parameter(Mandatory = $false)]
         [string] $runOn = ""
     )
+    # PS assets verification
     Start-AzAutomationRunbook -AutomationAccountName $using:AccountName -Name $using:AssetVerificationRunbookPSName  -ResourceGroupName $using:ResourceGroupName -Parameters $using:assetVerificationRunbookParams -RunOn $runOn  -MaxWaitSeconds 1800 -Wait | Out-Null
+
+    # python assets verification
+    Start-AzAutomationRunbook -AutomationAccountName $using:AccountName -Name $using:AssetVerificationRunbookPythonName  -ResourceGroupName $using:ResourceGroupName -Parameters $using:guid -RunOn $runOn  -MaxWaitSeconds 1800 -Wait | Out-Null
 }
 
 Connect-To-AzAccount
