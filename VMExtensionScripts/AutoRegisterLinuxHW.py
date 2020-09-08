@@ -12,9 +12,14 @@ def run_command(cmd):
 def download_omsagent(options):
     workspaceId = options.workspace_id
     workspaceKey = options.workspace_key
-    
+    workspaceRegion = options.region
+
+    opinsightsVal = "opinsights.azure.com"
+    if workspaceRegion == "USNat East":
+        opinsightsVal = "opinsights.azure.eaglex.ic.gov"
+
     cmdToDownloadOmsAgent = ["wget", "https://raw.githubusercontent.com/Microsoft/OMS-Agent-for-Linux/master/installer/scripts/onboard_agent.sh"] 
-    cmdToInstallOmsAgent = ["sh", "onboard_agent.sh", "-w", workspaceId, "-s", workspaceKey, "-d", "opinsights.azure.com"]
+    cmdToInstallOmsAgent = ["sh", "onboard_agent.sh", "-w", workspaceId, "-s", workspaceKey, "-d", opinsightsVal]
     
     returncode, _, _ = run_command(cmdToDownloadOmsAgent)
     
@@ -81,6 +86,7 @@ def main():
     parser.add_option("-g", "--groupname", dest="hybrid_worker_group_name", help="Hybrid worker group name.")
     parser.add_option("-w", "--workspaceid", dest="workspace_id", help="Workspace id.")
     parser.add_option("-l", "--workspacekey", dest="workspace_key", help="Workspace Key.")
+    parser.add_option("-r", "--region", dest="region", help="Workspace region")
 
     (options, _) = parser.parse_args()
     if(download_omsagent(options)):

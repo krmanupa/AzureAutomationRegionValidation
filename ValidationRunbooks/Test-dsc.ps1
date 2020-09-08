@@ -137,7 +137,6 @@ Remove-AzAutomationDscNodeConfiguration -ResourceGroupName $ResourceGroupName -A
 Write-Output  "Remove configuration" -verbose
 Remove-AzAutomationDscConfiguration -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountDscName -Name "SetupServer" -Force | Out-Null
 
-
 Write-Output "DSC Validation :: DSC Scenarios Validation Completed"
 
 

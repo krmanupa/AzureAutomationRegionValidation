@@ -74,8 +74,7 @@ Param(
         }
     }
     catch{
-        Write-Error "Webhook :: Webhook invocation failed"
-        Write-Error -Message $_.Exception
+        Write-Error "Webhook :: Webhook invocation failed $_"
     }
     
     #Try getting the webhook 
@@ -98,6 +97,16 @@ Param(
         Write-Error "Webhook :: Update failed"
     }
     
+    try{
+        $response = Invoke-WebRequest $Webhook.WebhookURI -Method Post -UseBasicParsing | $_.Content
+        Write-Output $response
+    }
+    catch{
+        Write-Error "Webhook :: Webhook invocation failed"
+        Write-Error -Message $_.Exception
+    }
+
+
     # Write-Output "Delete webhook" 
     Remove-AzAutomationWebhook -Name $WebhookName -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountName | Out-Null
     
