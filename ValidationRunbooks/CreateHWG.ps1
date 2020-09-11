@@ -192,3 +192,6 @@ try {
 catch {
     Write-Error "HWG Creation :: Error running VM extension - $_"
 }
+
+Get-AzAutomationHybridWorkerGroup -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName -Name $WorkerGroupName
+Write-Output "Creation of HWG Successful"

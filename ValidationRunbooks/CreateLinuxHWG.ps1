@@ -187,3 +187,6 @@ $filename = "AutoRegisterLinuxHW.py"
 
 $params = @{"fileuri" = $uri ; "filename" = $filename; "endpoint" = $agentEndpoint; "groupname" = $WorkerGroupName; "workspaceid" = $workspaceId ; "workspacekey" = $workspacePrimaryKey; "key" = $aaPrimaryKey; "region" = $location }
 Invoke-AzVMRunCommand -ResourceGroupName $ResourceGroupName -VMName $vmName -CommandId "RunShellScript" -ScriptPath $destination -Parameter $params | Out-Null
+
+Get-AzAutomationHybridWorkerGroup -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName -Name $WorkerGroupName
+Write-Output "Creation of HWG Successful"
