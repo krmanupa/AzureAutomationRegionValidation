@@ -88,7 +88,6 @@ function AddVMExtensionScriptsToStorageAccount {
             [string] $extensionUri = $absoluteUri
             New-AzAutomationVariable -Name $_.Name.split('.')[0] -Value $extensionUri -Encrypted $False -AutomationAccountName $automationAccountName -ResourceGroupName $resourceGroupName | Out-Null
         } 
-   
 }
 
 function ImportRunbooksGivenTheFolder {

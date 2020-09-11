@@ -11,9 +11,11 @@ workflow Test-JobSpecific {
         [Parameter(Mandatory = $false)]
         [string] $linuxWorkerGroupName = "",
         [Parameter(Mandatory = $true)]
-        [string] $guid ,
+        [string] $guid,
         [Parameters (Mandatory = $false)]
-        [Boolean] $RunCloudTests = $true,
+        [Boolean] $RunCloudTests = $true, 
+        [Parameters (Mandatory = $false)]
+        [Boolean] $CloudAssetVerification = $true,
         [Parameters (Mandatory = $false)]
         [Boolean] $RunWindowsHybridTests = $true,
         [Parameters (Mandatory = $false)]
@@ -37,7 +39,6 @@ workflow Test-JobSpecific {
     )
 
 
-    $workerGroupName = "test-auto-create"
     $assetVerificationRunbookParams = @{"guid" = $guid }
 
     if ($Environment -eq "USNat") {
@@ -183,41 +184,61 @@ workflow Test-JobSpecific {
             [Parameter(Mandatory = $false)]
             [string] $runOn = ""
         )
+
+        function Wait-JobReachTerminalState {
+            param (
+                $jobId,
+                $expectedStatus,
+                $noOfRetries = 20
+            )
+            $expectedStatusReached = $false
+            $retryCount = 1
+            $jobDetails = Get-AzAutomationJob -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName -Id $jobId
+            while ($jobDetails.Status -ne $expectedStatus -and $retryCount -le $noOfRetries) {
+                Start-Sleep -s 20
+                $retryCount++
+                $jobDetails = Get-AzAutomationJob -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName -Id $jobId
+            }
+            
+            if ($jobDetails.Status -eq $expectedStatus) {
+                $expectedStatusReached = $true
+            }
+            return $expectedStatusReached
+        }
+
         $JobCloudPSWF = Start-AzAutomationRunbook -AutomationAccountName $using:AccountName -Name $using:RunbookPSWFName -ResourceGroupName $using:ResourceGroupName -RunOn $runOn
         $pswfRbJobId = $JobCloudPSWF.JobId
-        Start-Sleep -Seconds 400
-        $Job1 = Get-AzAutomationJob -Id $pswfRbJobId -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
-        if ($Job1.Status -like "Running") {
-            Write-Output  "Cloud job for PS WF runbook is running"
-        }  
-        elseif ($Job1.Status -like "Queued") {
-            Write-Warning "Cloud and Hybrid Jobs Validation :: Cloud job for PS WF runbook didn't start in 5 mins"
-            Start-Sleep -Seconds 100
+        $hasStatusReached = Wait-JobReachTerminalState -jobId $pswfRbJobId -expectedStatus "Running"
+
+        if ($hasStatusReached -ne $true) {
+            Write-Output "ERROR: PSWF job has not started running..."
+            return
         }
 
         Write-Output  "Suspending PSWF runbook"
         Suspend-AzAutomationJob  -Id $pswfRbJobId -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
-        Start-Sleep -Seconds 30
-        $Job2 = Get-AzAutomationJob -Id $pswfRbJobId -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
-        if ($Job2.Status -like "Suspended") {
-            Write-Output  "Cloud job for PS WF runbook is suspended"
-        } 
+        $hasStatusReached = Wait-JobReachTerminalState -jobId $pswfRbJobId -expectedStatus "Suspended" -noOfRetries 6
 
-        Write-Output  "Resuming PSWF runbook"
-        Resume-AzAutomationJob  -Id $pswfRbJobId -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
-        Start-Sleep -Seconds 30
-        $Job3 = Get-AzAutomationJob -Id $pswfRbJobId -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
-        if ($Job3.Status -like "Running") {
-            Write-Output  "Cloud job for PS WF runbook has resumed running"
-        } 
+        if ($hasStatusReached -ne $true) {
+            Write-Output "ERROR: Error while suspending PSWF job..."
+        }
+        else {
+            Write-Output  "Resuming PSWF runbook"
+            Resume-AzAutomationJob  -Id $pswfRbJobId -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
+            $hasStatusReached = Wait-JobReachTerminalState -jobId $pswfRbJobId -expectedStatus "Running" -noOfRetries 6
+
+            if ($hasStatusReached -ne $true) {
+                Write-Output "ERROR: Error while Resuming PSWF job..."
+            }
+        }
 
         Write-Output  "Stopping PSWF runbook"
         Stop-AzAutomationJob  -Id $pswfRbJobId -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
-        Start-Sleep -Seconds 30
-        $Job4 = Get-AzAutomationJob -Id $pswfRbJobId -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName
-        if ($Job4.Status -like "Stopping" -or $Job4.Status -like "Stopped") {
-            Write-Output  "Cloud job for PS WF runbook is stopping"
-        }     
+        $hasStatusReached = Wait-JobReachTerminalState -jobId $pswfRbJobId -expectedStatus "Stopped" -noOfRetries 6
+
+        if ($hasStatusReached -ne $true) {
+            Write-Output "ERROR: Error while Stopping PSWF job..."
+        }   
     }
 
     function Start-AssetVerificationJob {
@@ -226,7 +247,20 @@ workflow Test-JobSpecific {
             $runbookName = $using:AssetVerificationRunbookPSName
         )
         # PS assets verification
-        Start-AzAutomationRunbook -AutomationAccountName $using:AccountName -Name $runbookName  -ResourceGroupName $using:ResourceGroupName -Parameters $using:assetVerificationRunbookParams -RunOn $runOn  -MaxWaitSeconds 1800 -Wait | Out-Null
+        ($job = Start-AzAutomationRunbook -AutomationAccountName $using:AccountName -Name $runbookName  -ResourceGroupName $using:ResourceGroupName -Parameters $using:assetVerificationRunbookParams -RunOn $runOn ) | Out-Null
+
+        $jobId = $job.JobId
+        $terminalStates = @("Completed", "Failed", "Stopped", "Suspended")
+        $retryCount = 1
+        $jobDetails = Get-AzAutomationJob -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName -Id $jobId
+        while ($terminalStates -notcontains $jobDetails.Status -and $retryCount -le 30) {
+            Start-Sleep -s 60
+            $retryCount++
+            $jobDetails = Get-AzAutomationJob -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName -Id $jobId
+        }
+    
+        $jobStatus = $jobDetails.Status
+        Write-Output "Asset Verification status run on $runOn is $jobStatus"
     }
 
     Connect-To-AzAccount
@@ -248,13 +282,15 @@ workflow Test-JobSpecific {
             Start-ChildJobTriggeringRunbook
             Write-Output "Cloud and Hybrid Jobs Validation :: Trigger Child Runbook  Cloud Job validation completed"
 
-            Start-AssetVerificationJob 
-            Write-Output "Cloud and Hybrid Jobs Validation :: AssetVerification Cloud Job validation completed"
+            if ($CloudAssetVerification -eq $true) {
+                Start-AssetVerificationJob 
+                Write-Output "Cloud and Hybrid Jobs Validation :: AssetVerification Cloud Job validation completed"
+            }
         }
     }
 
     sequence {
-        if ($RunHybridTests -eq $true -and $workerGroupName -ne "") {
+        if ($RunWindowsHybridTests -eq $true -and $workerGroupName -ne "") {
             Write-Output  "Starting Hybrid Jobs..."
     
             #Start-PythonJob -runOn $workerGroupName
@@ -268,25 +304,33 @@ workflow Test-JobSpecific {
             Start-ChildJobTriggeringRunbook -runOn $workerGroupName
             Write-Output "Cloud and Hybrid Jobs Validation :: Trigger Child Runbook Hybrid Job validation completed"
 
-            Start-AssetVerificationJob -runOn $workerGroupName
-            Write-Output "Cloud and Hybrid Jobs Validation :: AssetVerification Hybrid Job validation completed"
+            if ($RunWindowsAssetVerificationTests -eq $true) {
+                Start-AssetVerificationJob -runOn $workerGroupName
+                Write-Output "Cloud and Hybrid Jobs Validation :: AssetVerification Hybrid Job validation completed"
+            }
         
         }
         else {
             Write-Output "Cloud and Hybrid Jobs Validation :: Check the hybrid related params passed, RunHybridTests should be True and WorkerGroupName should not be Empty"
         }
     }
-    Write-Output "Cloud and Hybrid Jobs Validation :: Validation Completed"
-}
 
-sequence {
-    if ($RunHybridTests -eq $true -and $linuxWorkerGroupName -ne "") {
+    sequence {
+        if ($RunLinuxHybridTests -eq $true -and $linuxWorkerGroupName -ne "") {
+            Write-Output  "Starting Hybrid Jobs..."
+    
+            Start-PythonJob -runOn $linuxWorkerGroupName
 
-        Start-PythonJob -runOn $linuxWorkerGroupName
-        Write-Output "Cloud and Hybrid Jobs Validation :: Python Hybrid Job validation completed"
-
-        Start-AssetVerificationJob -runbookName $using:AssetVerificationRunbookPythonName -runOn $linuxWorkerGroupName
-        Write-Output "Cloud and Hybrid Jobs Validation :: AssetVerification Python Hybrid Job validation completed"
+            
+            if ($RunWindowsAssetVerificationTests -eq $true) {
+                Start-AssetVerificationJob -runOn $linuxWorkerGroupName -runbookName $using:AssetVerificationRunbookPythonName
+                Write-Output "Cloud and Hybrid Jobs Validation :: AssetVerification Hybrid Job validation completed"
+            }
         
+        }
+        else {
+            Write-Output "Cloud and Hybrid Jobs Validation :: Check the hybrid related params passed, RunLinuxHybridTests should be True and linuxWorkerGroupName should not be Empty"
+        }
     }
+    Write-Output "Cloud and Hybrid Jobs Validation :: Validation Completed"
 }

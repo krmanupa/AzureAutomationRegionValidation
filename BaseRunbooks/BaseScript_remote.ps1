@@ -179,10 +179,12 @@ workflow BaseScript_remote {
         $ScenarioStatus.Add("WindowsHWGCreation", $jobStatus.ToString())
         Write-Output "Windows Hybrid Worker Group Creation $jobStatus"
 
-        # $linuxHwgCreationParams = @{"location" = $using:location; "Environment" = $using:Environment; "ResourceGroupName" = $using:ResourceGroupName; "AccountName" = $using:AccountName; "WorkerType" = "Linux"; "vmName" = $using:linuxVmName; "WorkerGroupName" = $using:linuxWorkerGroupName }
+        $linuxHwgCreationParams = @{"location" = $using:location; "Environment" = $using:Environment; "ResourceGroupName" = $using:ResourceGroupName; "AccountName" = $using:AccountName; "WorkerType" = "Linux"; "vmName" = $using:linuxVmName; "WorkerGroupName" = $using:linuxWorkerGroupName }
 
-        # Start-AzAutomationRunbook -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName -Name $using:CreateLinuxHWGRunbookName -Parameters $hwgCreationParams -MaxWaitSeconds 1800 -Wait
-
+        $job = Start-AzAutomationRunbook -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName -Name $using:CreateLinuxHWGRunbookName -Parameters $linuxHwgCreationParams
+        
+        $jobId = $job.JobId
+        $jobStatus = Wait-JobReachTerminalState -jobId $jobId
         $ScenarioStatus.Add("LinuxHWGCreation", $jobStatus.ToString())
         Write-Output "Linux Hybrid Worker Group Creation $jobStatus"
     }
@@ -195,6 +197,7 @@ workflow BaseScript_remote {
     
 
         if ($ScenarioStatus["AssetCreation"] -ne "Completed") {
+            $CloudAssetVerification = $false
             $RunWindowsAssetVerificationTests = $false
             $RunLinuxAssetVerificationTests = $false
         }
@@ -206,7 +209,7 @@ workflow BaseScript_remote {
             $RunLinuxHybridTests = $false
         }
 
-        $startCloudHybridJobsParams = @{"Environment" = $using:Environment; "ResourceGroupName" = $using:ResourceGroupName; "AccountName" = $using:AccountName; "workerGroupName" = $using:workerGroupName; "guid" = $using:guid; "RunWindowsHybridTests" = $RunWindowsHybridTests; "RunLinuxHybridTests" = $RunLinuxHybridTests; "RunWindowsAssetVerificationTests" = $RunWindowsAssetVerificationTests; "RunLinuxAssetVerificationTests" = $RunLinuxAssetVerificationTests }
+        $startCloudHybridJobsParams = @{"Environment" = $using:Environment; "ResourceGroupName" = $using:ResourceGroupName; "AccountName" = $using:AccountName; "workerGroupName" = $using:workerGroupName; "linuxWorkerGroupName" = $using:linuxWorkerGroupName; "guid" = $using:guid; "CloudAssetVerification" = $CloudAssetVerification; "RunWindowsHybridTests" = $RunWindowsHybridTests; "RunLinuxHybridTests" = $RunLinuxHybridTests; "RunWindowsAssetVerificationTests" = $RunWindowsAssetVerificationTests; "RunLinuxAssetVerificationTests" = $RunLinuxAssetVerificationTests }
 
         $job = Start-AzAutomationRunbook -AutomationAccountName $using:AccountName -ResourceGroupName $using:ResourceGroupName -Name $using:StartCloudHybridJobsRunbookName -Parameters $startCloudHybridJobsParams 
 
@@ -436,5 +439,4 @@ workflow BaseScript_remote {
 
     Start-CMK
     Checkpoint-Workflow
-
 }

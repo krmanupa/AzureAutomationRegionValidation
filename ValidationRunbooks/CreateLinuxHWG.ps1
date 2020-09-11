@@ -1,24 +1,24 @@
 Param(
-        [Parameter(Mandatory = $false)]
-        [string] $location = "West Central US",  
-        [Parameter(Mandatory = $false)]
-        [string] $Environment = "AzureCloud", 
-        [Parameter(Mandatory = $false)]
-        [string] $ResourceGroupName = "Test-auto-creation",
-        [Parameter(Mandatory = $false)]
-        [string] $AccountName = "Test-auto-creation-aa",
-        [Parameter(Mandatory = $false)]
-        [string] $WorkspaceName = "Test-LAWorkspace"
-        [Parameter(Mandatory=$true)]
-        [String] $vmName,
-        [Parameter(Mandatory=$true)]
-        [String] $WorkerGroupName
-        )
+    [Parameter(Mandatory = $false)]
+    [string] $location = "West Central US",  
+    [Parameter(Mandatory = $false)]
+    [string] $Environment = "AzureCloud", 
+    [Parameter(Mandatory = $false)]
+    [string] $ResourceGroupName = "Test-auto-creation",
+    [Parameter(Mandatory = $false)]
+    [string] $AccountName = "Test-auto-creation-aa",
+    [Parameter(Mandatory = $false)]
+    [string] $WorkspaceName = "Test-LAWorkspace",
+    [Parameter(Mandatory = $true)]
+    [String] $vmName,
+    [Parameter(Mandatory = $true)]
+    [String] $WorkerGroupName
+)
  
 $ErrorActionPreference = "Stop"
 $guid_val = [guid]::NewGuid()
 $guid = $guid_val.ToString()
-if($Environment -eq "USNat"){
+if ($Environment -eq "USNat") {
     Add-AzEnvironment -Name USNat -ServiceManagementUrl 'https://management.core.eaglex.ic.gov/' -ActiveDirectoryAuthority 'https://login.microsoftonline.eaglex.ic.gov/' -ActiveDirectoryServiceEndpointResourceId 'https://management.azure.eaglex.ic.gov/' -ResourceManagerEndpoint 'https://usnateast.management.azure.eaglex.ic.gov' -GraphUrl 'https://graph.cloudapi.eaglex.ic.gov' -GraphEndpointResourceId 'https://graph.cloudapi.eaglex.ic.gov/' -AdTenant 'Common' -AzureKeyVaultDnsSuffix 'vault.cloudapi.eaglex.ic.gov' -AzureKeyVaultServiceEndpointResourceId 'https://vault.cloudapi.eaglex.ic.gov' -EnableAdfsAuthentication 'False'
 }
 
@@ -29,8 +29,7 @@ $aaPrimaryKey = ""
 $workspaceId = ""
 $workspacePrimaryKey = ""
 
-try
-{
+try {
     $servicePrincipalConnection = Get-AutomationConnection -Name $connectionName      
     Write-Output  "Logging in to Azure..." -verbose
     Connect-AzAccount `
@@ -41,11 +40,11 @@ try
         -Environment $Environment | Out-Null
 }
 catch {
-    if (!$servicePrincipalConnection)
-    {
+    if (!$servicePrincipalConnection) {
         $ErrorMessage = "Connection $connectionName not found."
         throw $ErrorMessage
-    } else{
+    }
+    else {
         Write-Error -Message $_.Exception
         throw $_.Exception
     }
@@ -58,7 +57,7 @@ Write-Output  "Getting Automation Account....."
 # Write-Output "Create account" -verbose
 try {
     ($Account = Get-AzAutomationAccount -Name $AccountName -ResourceGroupName $ResourceGroupName) | Out-Null 
-    if($Account.AutomationAccountName -like $AccountName) {
+    if ($Account.AutomationAccountName -like $AccountName) {
         Write-Output  "Account retrieved successfully"
         ($accRegInfo = Get-AzAutomationRegistrationInfo -ResourceGroup $ResourceGroupName -AutomationAccountName  $AccountName) | Out-Null
         $agentEndpoint = $accRegInfo.Endpoint
@@ -66,7 +65,7 @@ try {
 
         Write-Output  "AgentService endpoint: $agentEndpoint  Primary key : $aaPrimaryKey"
     } 
-    else{
+    else {
         Write-Error "HWG Creation :: Account retrieval failed"
     }
 }
@@ -103,11 +102,11 @@ catch {
 }
 
 #Create a VM
-try{ 
-    $vmNetworkName = "TestVnet" + $guid.SubString(0,4)
-    $subnetName = "TestSubnet"+ $guid.SubString(0,4)
-    $newtworkSG = "TestNetworkSecurityGroup" + $guid.SubString(0,4)
-    $ipAddressName = "TestPublicIpAddress" + $guid.SubString(0,4)
+try { 
+    $vmNetworkName = "TestVnet" + $guid.SubString(0, 4)
+    $subnetName = "TestSubnet" + $guid.SubString(0, 4)
+    $newtworkSG = "TestNetworkSecurityGroup" + $guid.SubString(0, 4)
+    $ipAddressName = "TestPublicIpAddress" + $guid.SubString(0, 4)
     $User = "TestVMUserLinux"
     $Password = ConvertTo-SecureString "SecurePassword12345" -AsPlainText -Force
     $VMCredential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $User, $Password
@@ -123,26 +122,62 @@ try{
         -Credential $VMCredential | Out-Null
 
     Start-Sleep -s 120
-    }
-catch{
+}
+catch {
     Write-Error "HWG Creation :: Error creating VM : $_"
 }
 
-$runshellscriptvar = Get-AzAutomationVariable -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName -Name "RunVMCommandOnLinux"
-$shellscripturi = $runshellscriptvar.Value
-$shellScriptName = "RunVMCommandOnLinux.sh"
+function Check-UrlIsAccessible {
+    param (
+        $url
+    )
+    # First we create the request.
+    $HTTP_Request = [System.Net.WebRequest]::Create($url)
 
-$destination = Join-Path $env:Temp -ChildPath $shellScriptName -Verbose
-Invoke-WebRequest -URI $shellscripturi -OutFile $destination
+    try {
+        # We then get a response from the site.
+        $HTTP_Response = $HTTP_Request.GetResponse()
 
-$variable = Get-AzAutomationVariable -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName -Name "AutoRegisterLinuxHW"
-$uri = $variable.Value
+        # We then get the HTTP code as an integer.
+        $HTTP_Status = [int]$HTTP_Response.StatusCode
 
-if($uri -eq ""){
-    $uri = "https://raw.githubusercontent.com/krmanupa/AzureAutomationRegionValidation/master/VMExtensionScripts/AutoRegisterLinuxHW.py"
+        If ($HTTP_Status -eq 200) {
+            return $true
+        }
+        Else {
+            return $false
+        }
+    }
+    catch {
+        return $false
+    }
+    finally {
+        # Finally, we clean up the http request by closing it.
+        If ($null -eq $HTTP_Response) { } 
+        Else { $HTTP_Response.Close() }
+    }
 }
 
-if($shellscripturi -eq ""){
+$shellScriptName = "RunVMCommandOnLinux.sh"
+$destination = Join-Path $env:Temp -ChildPath $shellScriptName -Verbose
+$shellscripturi = "https://raw.githubusercontent.com/krmanupa/AzureAutomationRegionValidation/master/VMExtensionScripts/RunVMCommandOnLinux.sh"
+
+if (Check-UrlIsAccessible -url $shellscripturi -eq $false) {
+    $runshellscriptvar = Get-AzAutomationVariable -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName -Name "RunVMCommandOnLinux"
+    $shellscripturi = $runshellscriptvar.Value
+}
+
+# Get the Script to be run on the VM
+Invoke-WebRequest -URI $shellscripturi -OutFile $destination
+
+# Auto registration script URL
+$uri = "https://raw.githubusercontent.com/krmanupa/AzureAutomationRegionValidation/master/VMExtensionScripts/AutoRegisterLinuxHW.py"
+if (Check-UrlIsAccessible -url $uri -eq $false) {
+    $variable = Get-AzAutomationVariable -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName -Name "AutoRegisterLinuxHW"
+    $uri = $variable.Value 
+}
+
+if ($shellscripturi -eq "") {
     Write-Error "Cannot continue since the uri to the script to run registration on Linux machine is not present in the automation account"
     return
 }
@@ -150,5 +185,5 @@ if($shellscripturi -eq ""){
 $filename = "AutoRegisterLinuxHW.py"
 
 
-$params = @{"fileuri" = $uri ; "filename" = $filename;"endpoint" = $agentEndpoint;"groupname" = $WorkerGroupName; "workspaceid" =$workspaceId ; "workspacekey" = $workspacePrimaryKey; "key"=$aaPrimaryKey; "region"=$location}
+$params = @{"fileuri" = $uri ; "filename" = $filename; "endpoint" = $agentEndpoint; "groupname" = $WorkerGroupName; "workspaceid" = $workspaceId ; "workspacekey" = $workspacePrimaryKey; "key" = $aaPrimaryKey; "region" = $location }
 Invoke-AzVMRunCommand -ResourceGroupName $ResourceGroupName -VMName $vmName -CommandId "RunShellScript" -ScriptPath $destination -Parameter $params | Out-Null
