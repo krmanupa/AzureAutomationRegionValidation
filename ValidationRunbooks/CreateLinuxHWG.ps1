@@ -8,9 +8,7 @@ Param(
         [Parameter(Mandatory = $false)]
         [string] $AccountName = "Test-auto-creation-aa",
         [Parameter(Mandatory = $false)]
-        [string] $WorkspaceName = "Test-LAWorkspace",
-        [Parameter(Mandatory = $false)]
-        [String] $WorkerType = "Windows",
+        [string] $WorkspaceName = "Test-LAWorkspace"
         [Parameter(Mandatory=$true)]
         [String] $vmName,
         [Parameter(Mandatory=$true)]
@@ -110,7 +108,7 @@ try{
     $subnetName = "TestSubnet"+ $guid.SubString(0,4)
     $newtworkSG = "TestNetworkSecurityGroup" + $guid.SubString(0,4)
     $ipAddressName = "TestPublicIpAddress" + $guid.SubString(0,4)
-    $User = "TestVMUser"
+    $User = "TestVMUserLinux"
     $Password = ConvertTo-SecureString "SecurePassword12345" -AsPlainText -Force
     $VMCredential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $User, $Password
     New-AzVm `
@@ -121,6 +119,7 @@ try{
         -SubnetName $subnetName `
         -SecurityGroupName $newtworkSG `
         -PublicIpAddressName $ipAddressName `
+        -Image "UbuntuLTS" `
         -Credential $VMCredential | Out-Null
 
     Start-Sleep -s 120
@@ -129,34 +128,27 @@ catch{
     Write-Error "HWG Creation :: Error creating VM : $_"
 }
 
-#Run the VM Extension to register the Hybrid worker
-## Run AZ VM Extension to download and Install MMA Agent
-$commandToExecute = "powershell .\WorkerDownloadAndRegister.ps1 -workspaceId $workspaceId -workspaceKey $workspacePrimaryKey -workerGroupName $WorkerGroupName -agentServiceEndpoint $agentEndpoint -aaToken $aaPrimaryKey"
+$runshellscriptvar = Get-AzAutomationVariable -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName -Name "RunVMCommandOnLinux"
+$shellscripturi = $runshellscriptvar.Value
+$shellScriptName = "RunVMCommandOnLinux.sh"
 
-$variable = Get-AzAutomationVariable -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName -Name "WorkerDownloadAndRegister"
+$destination = Join-Path $env:Temp -ChildPath $shellScriptName -Verbose
+Invoke-WebRequest -URI $shellscripturi -OutFile $destination
+
+$variable = Get-AzAutomationVariable -AutomationAccountName $AccountName -ResourceGroupName $ResourceGroupName -Name "AutoRegisterLinuxHW"
 $uri = $variable.Value
 
 if($uri -eq ""){
-    $uri = "https://raw.githubusercontent.com/krmanupa/AutoRegisterHW/master/VMExtensionScripts/WorkerDownloadAndRegister.ps1"
+    $uri = "https://raw.githubusercontent.com/krmanupa/AzureAutomationRegionValidation/master/VMExtensionScripts/AutoRegisterLinuxHW.py"
 }
-$settings = @{"fileUris" =  @($uri.ToString()); "commandToExecute" = $commandToExecute};
-$protectedSettings = @{"storageAccountName" = ""; "storageAccountKey" = ""};
 
-# Run Az VM Extension to download and register worker.
-Write-Output  "Running Az VM Extension...."
-Write-Output  "Command executing ... $commandToExecute"
-try {
-    Set-AzVMExtension -ResourceGroupName $ResourceGroupName `
-    -Location $location `
-        -VMName $vmName `
-        -Name "Register-HybridWorker" `
-        -Publisher "Microsoft.Compute" `
-        -ExtensionType "CustomScriptExtension" `
-        -TypeHandlerVersion "1.10" `
-        -Settings $settings `
-        -ProtectedSettings $protectedSettings 
+if($shellscripturi -eq ""){
+    Write-Error "Cannot continue since the uri to the script to run registration on Linux machine is not present in the automation account"
+    return
+}
 
-}
-catch {
-    Write-Error "HWG Creation :: Error running VM extension - $_"
-}
+$filename = "AutoRegisterLinuxHW.py"
+
+
+$params = @{"fileuri" = $uri ; "filename" = $filename;"endpoint" = $agentEndpoint;"groupname" = $WorkerGroupName; "workspaceid" =$workspaceId ; "workspacekey" = $workspacePrimaryKey; "key"=$aaPrimaryKey; "region"=$location}
+Invoke-AzVMRunCommand -ResourceGroupName $ResourceGroupName -VMName $vmName -CommandId "RunShellScript" -ScriptPath $destination -Parameter $params | Out-Null

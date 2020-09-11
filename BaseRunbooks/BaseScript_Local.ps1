@@ -67,7 +67,6 @@ function AddVMExtensionScriptsToStorageAccount {
         $automationAccountName
     )
 
-    try {
         $ctx=(Get-AzStorageAccount -ResourceGroupName $resourceGroupName -Name $storageAccName).Context 
     ## Creates an file share  
         $containerName = "workerregisterscriptscontainer"
@@ -89,10 +88,7 @@ function AddVMExtensionScriptsToStorageAccount {
             [string] $extensionUri = $absoluteUri
             New-AzAutomationVariable -Name $_.Name.split('.')[0] -Value $extensionUri -Encrypted $False -AutomationAccountName $automationAccountName -ResourceGroupName $resourceGroupName | Out-Null
         } 
-    }
-    catch {
-        Write-Error "Error import VMExtension scripts: $_"
-    }
+   
 }
 
 function ImportRunbooksGivenTheFolder {
@@ -102,42 +98,37 @@ function ImportRunbooksGivenTheFolder {
         $folderPath,
         $isPSWFRbFolder = $false
     )
+    if($isPSWFRbFolder -eq $true){
+        Get-ChildItem $folderPath -Filter *.ps1 |
+        Foreach-Object{
+            $fileNameWithExtension = $_.Name
+            $fileName =  $fileNameWithExtension.Split('.')[0]
+            $fullPath = "$folderPath\$fileNameWithExtension"
+            Import-AzAutomationRunbook -Name $fileName -Path $fullPath  -ResourceGroupName $resourceGroupName -AutomationAccountName $accName -Type PowerShellWorkflow -Published
+        }
+    }
 
-    try {
-        if($isPSWFRbFolder -eq $true){
-            Get-ChildItem $folderPath -Filter *.ps1 |
-            Foreach-Object{
-                $fileNameWithExtension = $_.Name
-                $fileName =  $fileNameWithExtension.Split('.')[0]
-                $fullPath = "$folderPath\$fileNameWithExtension"
-                Import-AzAutomationRunbook -Name $fileName -Path $fullPath  -ResourceGroupName $resourceGroupName -AutomationAccountName $accName -Type PowerShellWorkflow -Published
-            }
+    else{
+        Write-Output "$folderPath"
+        Get-ChildItem $folderPath -Filter *.ps1 |
+        Foreach-Object{
+            $fileNameWithExtension = $_.Name
+            $fileName =  $fileNameWithExtension.Split('.')[0]
+            $fullPath = "$folderPath\$fileNameWithExtension"
+            Write-Output $fullPath
+            Import-AzAutomationRunbook -Name $fileName -Path $fullPath  -ResourceGroupName $resourceGroupName -AutomationAccountName $accName -Type PowerShell -Published
         }
-    
-        else{
-            Write-Output "$folderPath"
-            Get-ChildItem $folderPath -Filter *.ps1 |
-            Foreach-Object{
-                $fileNameWithExtension = $_.Name
-                $fileName =  $fileNameWithExtension.Split('.')[0]
-                $fullPath = "$folderPath\$fileNameWithExtension"
-                Write-Error $fullPath
-                Import-AzAutomationRunbook -Name $fileName -Path $fullPath  -ResourceGroupName $resourceGroupName -AutomationAccountName $accName -Type PowerShell -Published
-            }
-    
-            Get-ChildItem $folderPath -Filter *.py |
-            Foreach-Object{
-                $fileNameWithExtension = $_.Name
-                $fileName =  $fileNameWithExtension.Split('.')[0]
-                $fullPath = "$folderPath\$fileNameWithExtension"
-                Write-Error $fullPath
-                Import-AzAutomationRunbook -Name $fileName -Path $fullPath  -ResourceGroupName $resourceGroupName -AutomationAccountName $accName -Type Python2 -Published
-            }
+
+        Get-ChildItem $folderPath -Filter *.py |
+        Foreach-Object{
+            $fileNameWithExtension = $_.Name
+            $fileName =  $fileNameWithExtension.Split('.')[0]
+            $fullPath = "$folderPath\$fileNameWithExtension"
+            Write-Output $fullPath
+            Import-AzAutomationRunbook -Name $fileName -Path $fullPath  -ResourceGroupName $resourceGroupName -AutomationAccountName $accName -Type Python2 -Published
         }
     }
-    catch {
-        Write-Error "Import runbooks failed : $_"
-    }
+    
 }
 
 function ImportRequiredRunbooks {
@@ -205,30 +196,26 @@ function CreateStorageAccount {
 
 Select-AzSubscription -SubscriptionId $SubId
 
-# $guid_val = [guid]::NewGuid()
-# $guid = $guid_val.ToString()
+$guid_val = [guid]::NewGuid()
+$guid = $guid_val.ToString()
 
-# $resourceGroupToWorkOn = "region_autovalidate_" + $guid.SubString(0,4)
-# CreateResourceGroupToWorkOn -resourceGroupName $resourceGroupToWorkOn
-# Write-Output "Resource Group - 1 : $resourceGroupToWorkOn"
+$resourceGroupToWorkOn = "region_autovalidate_" + $guid.SubString(0,4)
+CreateResourceGroupToWorkOn -resourceGroupName $resourceGroupToWorkOn
+Write-Output "Resource Group - 1 : $resourceGroupToWorkOn"
 
 
-# $resourceGroupToMoveAccs = "region_autovalidate_moveto_" + $guid.SubString(0,4)
-# CreateResourceGroupToMoveAccsTo -resourceGroupName $resourceGroupToMoveAccs
-# Write-Output "Resource Group - 2 : $resourceGroupToMoveAccs"
+$resourceGroupToMoveAccs = "region_autovalidate_moveto_" + $guid.SubString(0,4)
+CreateResourceGroupToMoveAccsTo -resourceGroupName $resourceGroupToMoveAccs
+Write-Output "Resource Group - 2 : $resourceGroupToMoveAccs"
 
-# $automationAccountName = "region-test-aa" + $guid.SubString(0,4) 
-# CreateAutomationAccount -accName $automationAccountName -resourceGroupName $resourceGroupToWorkOn
-# Write-Output "Automation Account : $automationAccountName"
+$automationAccountName = "region-test-aa" + $guid.SubString(0,4) 
+CreateAutomationAccount -accName $automationAccountName -resourceGroupName $resourceGroupToWorkOn
+Write-Output "Automation Account : $automationAccountName"
 
-$resourceGroupToWorkOn = "region_autovalidate_6349"
-$automationAccountName = "region-test-aa6349"
 ImportRequiredRunbooks -accName $automationAccountName -resourceGroupName $resourceGroupToWorkOn
 
-# $resourceGroupToWorkOn = "anthos"
-# $automationAccountName = "gosdk1"
-# $storageAccName = "testsa" + $guid.SubString(0,4)
-# $orderedModuleUris = CreateStorageAccount -storageAccName $storageAccName -resourceGroupName $resourceGroupToWorkOn -automationAccountName $automationAccountName -location $location 
+$storageAccName = "testsa" + $guid.SubString(0,4)
+$orderedModuleUris = CreateStorageAccount -storageAccName $storageAccName -resourceGroupName $resourceGroupToWorkOn -automationAccountName $automationAccountName -location $location 
 
-# ImportRequiredModules -accName $automationAccountName -resourceGroupName $resourceGroupToWorkOn -orderedModuleUris $orderedModuleUris
-# AddVMExtensionScriptsToStorageAccount -resourceGroupName $resourceGroupToWorkOn -storageAccName $storageAccName -automationAccountName $automationAccountName
+ImportRequiredModules -accName $automationAccountName -resourceGroupName $resourceGroupToWorkOn -orderedModuleUris $orderedModuleUris
+AddVMExtensionScriptsToStorageAccount -resourceGroupName $resourceGroupToWorkOn -storageAccName $storageAccName -automationAccountName $automationAccountName

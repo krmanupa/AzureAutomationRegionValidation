@@ -58,9 +58,10 @@ Param(
         Write-Error "Webhook :: Webhook creation failed"
     }
     
+    $webhookUri = $Webhook.WebhookURI 
     # Write-Output "Invoke webhook" 
     try{
-        $JobDetails = Invoke-WebRequest $Webhook.WebhookURI -Method Post -UseBasicParsing
+        $JobDetails = Invoke-WebRequest $webhookUri -Method Post -UseBasicParsing
         $Job = $JobDetails.Content | ConvertFrom-Json
         $JobId = $Job.JobIds | Out-String
         Start-Sleep -Seconds 60
@@ -98,14 +99,13 @@ Param(
     }
     
     try{
-        $response = Invoke-WebRequest $Webhook.WebhookURI -Method Post -UseBasicParsing | $_.Content
-        Write-Output $response
+        Invoke-WebRequest $webhookUri -Method Post
     }
     catch{
-        Write-Error "Webhook :: Webhook invocation failed"
-        Write-Error -Message $_.Exception
+        if ($_ -match "This webhook has expired or is disabled") {
+            Write-Output "Webhook :: Disable Check Verified."
+        }
     }
-
 
     # Write-Output "Delete webhook" 
     Remove-AzAutomationWebhook -Name $WebhookName -ResourceGroupName $ResourceGroupName -AutomationAccountName $AccountName | Out-Null

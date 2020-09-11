@@ -6,7 +6,7 @@ Param(
     [Parameter(Mandatory = $true)]
     [string] $ResourceGroupName
 )
-$ErrorActionPreference = $true
+$ErrorActionPreference = "Stop"
 if($Environment -eq "USNat"){
     Add-AzEnvironment -Name USNat -ServiceManagementUrl 'https://management.core.eaglex.ic.gov/' -ActiveDirectoryAuthority 'https://login.microsoftonline.eaglex.ic.gov/' -ActiveDirectoryServiceEndpointResourceId 'https://management.azure.eaglex.ic.gov/' -ResourceManagerEndpoint 'https://usnateast.management.azure.eaglex.ic.gov' -GraphUrl 'https://graph.cloudapi.eaglex.ic.gov' -GraphEndpointResourceId 'https://graph.cloudapi.eaglex.ic.gov/' -AdTenant 'Common' -AzureKeyVaultDnsSuffix 'vault.cloudapi.eaglex.ic.gov' -AzureKeyVaultServiceEndpointResourceId 'https://vault.cloudapi.eaglex.ic.gov' -EnableAdfsAuthentication 'False'
 }
@@ -103,7 +103,7 @@ function VerifyDeleteSC {
 
 function TestSourceControlForGitRepo {
     $githubRepoName = "krmanupaGitHub"
-    $githubAccessToken = "8664c0eea4fe6b1801c77d653325ac10e8b2b458"
+    $githubAccessToken = "6d608f5a5ed54ebd75277a7d3260faca79a27485"
     $githubAccessTokenStr = ConvertTo-SecureString -String $githubAccessToken -AsPlainText -Force
     # Create the Source Control
     New-AzAutomationSourceControl -ResourceGroupName $ResourceGroupName `
