@@ -28,7 +28,7 @@ $outputPath = $directoryPathForMMADownload + "\MMA.exe"
 # need to update the MMA Agent exe link
 Invoke-WebRequest "https://go.microsoft.com/fwlink/?LinkId=828603" -Out $outputPath
 
-Start-Sleep -s 120
+Start-Sleep -s 30
 
 
 $changeDirectoryToMMALocation = "cd  $directoryPathForMMADownload"
@@ -38,7 +38,7 @@ Write-Output "Extracting MMA Agent...."
 $commandToInstallMMAAgent = ".\MMA.exe /c /t:c:\windows\temp\oms"
 Invoke-Expression $commandToInstallMMAAgent
 
-Start-Sleep -s 120
+Start-Sleep -s 30
 
 
 $tmpFolderOfMMA = "cd c:\windows\temp\oms"
@@ -53,7 +53,7 @@ Write-Output "Connecting LA Workspace to the MMA Agent...."
 $commandToConnectoToLAWorkspace = '.\setup.exe /qn NOAPM=1 ADD_OPINSIGHTS_WORKSPACE=1 OPINSIGHTS_WORKSPACE_AZURE_CLOUD_TYPE=' + $cloudType + ' OPINSIGHTS_WORKSPACE_ID="'+ $workspaceId +'" OPINSIGHTS_WORKSPACE_KEY="'+ $workspaceKey+'" AcceptEndUserLicenseAgreement=1'
 Invoke-Expression $commandToConnectoToLAWorkspace
 
-Start-Sleep -Seconds 300
+Start-Sleep -Seconds 60
 
 # wait until the MMA Agent downloads AzureAutomation on to the machine
 $workerFolder = "C:\\Program Files\\Microsoft Monitoring Agent\\Agent\\AzureAutomation\\7.3.837.0\\HybridRegistration"
@@ -64,7 +64,7 @@ while($i -le 5)
     $i++
     if(!(Test-Path -path $workerFolder))  
     {  
-        Start-Sleep -s 100
+        Start-Sleep -s 60
         Write-Host "Folder path is not present waiting..:  $workerFolder"    
     }
     else 
@@ -89,8 +89,10 @@ if($azureAutomationPresent){
     }
 
     $azureAutomationDirectory = "cd '$workerFolder'"
+    Start-Sleep -s 10
     Invoke-Expression $azureAutomationDirectory
 
     Import-Module .\HybridRegistration.psd1
+    Start-Sleep -s 10
     Add-HybridRunbookWorker -GroupName $workerGroupName -EndPoint $agentServiceEndpoint -Token $aaToken
 }
