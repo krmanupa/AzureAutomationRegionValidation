@@ -12,7 +12,7 @@ elif [ -z "${python3}" ]
 then
     #echo "python3 exists";
     echo "python3"
-    exit 0
+    exit 1
 else
     echo "'python2' or 'python3' not found on this machine. Please install python."
     exit 1
