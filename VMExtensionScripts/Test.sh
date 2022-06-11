@@ -10,3 +10,4 @@ then
 else 
     echo "'python2' or 'python3' not found on this machine. Please install python."
     exit 1
+fi
