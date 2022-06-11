@@ -1,3 +1,5 @@
+#!/bin/bash
+
 if [! -z $(python3 -V 2>&1 | grep -Po '(?<=Python )(.+)') ]
 	then
   #echo "python3 exists"; 
